@@ -133,7 +133,8 @@ calmProfile:
     CALM unique-id — непустые строки; узлы и связи уникальны в своих массивах,
     интерфейсы — внутри узла. Привязки к каноническим идентичностям не дублируются.
     CALM ID не обязаны совпадать с service.name или каноническими ID выходного графа.
-    label строится из CALM name (для endpoint — method и route), обрезается до 255 символов.
+    label строится из CALM name, а при пустом name — из unique-id узла;
+    для endpoint — из method и route. Результат обрезается до 255 символов.
     GraphNode.known означает точное объявление; calmNodeId/calmInterfaceId есть только при known=true.
   relationships: |-
     connects.source/destination: node ссылается на CALM узел; interfaces — необязательный
