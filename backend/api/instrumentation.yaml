@@ -33,27 +33,26 @@ instrumentation:
     задержка и гарантии доставки не вычисляются.
   missingData: Нет идентичности PostgreSQL/Kafka — unresolvedResourceSpans и без ребра.
     Нет endpoint/worker — service-level fallback с diagnostics. Это снижение детализации,
-    не доказательство отсутствия запрещённого вызова.
+    не доказательство соответствия декларации.
   discovery: Неизвестные узлы и их родительские сервисы добавляются только в фактический
     граф. Ожидаемая модель автоматически не меняется.
 contractDetails:
   info: |-
     ArchDrift MVP: один Go-бэкенд, одна система и одно окружение. Локальный MVP без аутентификации.
-    Постоянный приём OTLP; построение графа и проверка правил по запросу.
+    Постоянный приём OTLP; построение графа и сравнение с декларацией по запросу.
     Поддерживаются HTTP endpoints, фоновые воркеры, PostgreSQL-базы и Kafka-топики.
     REST — JSON; ingestion — бинарный OTLP protobuf. Регистрация Collector не требуется.
-    Версия 0.2.0 несовместима с 0.1.0: services заменены на nodes, правила и рёбра типизированы.
+    Версия 0.3.0: вход — CALM 1.2; отдельная политика разрешений удалена.
     Граф всегда детальный. Сворачивание endpoints/workers до сервисов выполняет frontend.
-    Принадлежность parentId не является ребром взаимодействия и не проверяется правилами.
-    Контракт инструментации MVP приведён в x-archdrift-instrumentation; это соглашение проекта,
+    Принадлежность parentId не является ребром взаимодействия и не является наблюдаемым вызовом.
+    Контракт инструментации MVP приведён в разделе instrumentation; это соглашение проекта,
     а не утверждение об автоматической поддержке всех приложений и библиотек.
   paths//api/v1/architecture/put: |-
     Атомарно создаёт/заменяет модель. Первая version=1, каждая запись увеличивает версию.
     При конкурентных PUT побеждает последняя завершённая транзакция. Исторический анализ также использует текущую модель.
-    Проверяются канонические ID, уникальность ID и идентичностей, parentId и принадлежность,
-    наличие service, ссылки правил, совместимость типов концов/связи, фильтр dbOperations.
-    Одинаковые selectors/type/filter/action с разными id считаются дубликатами и отклоняются.
-    Противоположные действия и перекрывающиеся selectors разрешены: deny всегда побеждает.
+    Проверяются официальная JSON Schema CALM 1.2 и calmProfile ниже.
+    Исходный CALM сохраняется и возвращается в model без потери дополнительных полей.
+    Внешние документы и схемы из загрузки не скачиваются; официальные схемы поставляются локально.
     Self-call сервиса и взаимодействия между операциями внутри сервиса допустимы.
     Ошибка валидации не изменяет модель. YAML-импорт вне MVP; endpoint принимает JSON.
   paths//api/v1/analysis/get: |-
@@ -61,15 +60,15 @@ contractDetails:
     Нет модели — 409. Нет данных — 200 с узлами модели observed=false, пустыми edges/violations.
     Граф включает узлы модели и наблюдаемые узлы с их родительскими сервисами.
     В интервал должен попадать startTime опорного спана; связанные спаны и предки ищутся во всех сохранённых данных.
-    Идентичность и построение описаны в NodeDefinition и x-archdrift-instrumentation.
+    Идентичность и построение описаны в NodeDefinition и instrumentation.
     Спаны могут приходить поздно, повторный анализ того же интервала может измениться.
     Рёбра агрегируются по source,target,type,dbOperation. Один опорный спан учитывается один раз.
-    Правила вычисляются по Rule: сервис охватывает непосредственные endpoint/worker, deny всегда побеждает.
-    Конкретные правила endpoint/worker не совпадают с service-level fallback; такие операции отражаются в diagnostics.
-    Unknown_node — отдельное нарушение декларации, даже если взаимодействие разрешено правилом сервиса.
-    Ненаблюдаемые узлы и связи не считаются нарушениями. Один violation на узел либо ключ ребра и тип.
+    Сопоставление выполняется по calmProfile.matching. Ненаблюдаемые связи не являются нарушениями.
+    Только unexpected создаёт unexpected_edge; declared и indeterminate не создают нарушений.
+    Отдельного unknown_node нет. Незадекларированные узлы видны в графе с known=false.
+    Один violation на ключ unexpected-ребра. Детальные дочерние узлы могут быть покрыты связью сервисов.
     Сортировка: nodes по node.id, edges по source,target,type,dbOperation, violations по type и объекту.
-    Frontend сворачивает граф до сервисов для обзора, но проверка правил выполнена до сворачивания.
+    Frontend сворачивает граф до сервисов для обзора, но проверка декларации выполнена до сворачивания.
     Пагинации нет; frontend может опрашивать каждые 3–5 секунд.
   paths//api/v1/traces/{traceId}/get: |
     Возвращает все доступные спаны, отсортированные по startTime, затем spanId.
@@ -88,27 +87,10 @@ contractDetails:
     Неразбираемый protobuf возвращает 400; временная ошибка БД — 503.
     OpenAPI описывает бинарные тела как string/binary; protobuf-типы берутся из
     официального opentelemetry-proto, их Go-типы не генерируются из этого YAML.
-  components/schemas/Rule: |-
-    from/to должны ссылаться на узлы модели. Сервис в любом конце правила совпадает с самим
-    сервисом и его непосредственными endpoint/worker, включая обнаруженные незадекларированные дочерние узлы.
-    Конкретный endpoint/worker/resource совпадает только с самим собой. Метки и префиксы ID не являются selectors.
-    Допустимые пары:
-    http_call: service|endpoint|worker -> service|endpoint;
-    db_query: service|endpoint|worker -> postgres_database;
-    publish: service|endpoint|worker -> kafka_topic;
-    consume: kafka_topic -> service|endpoint|worker.
-    Для consume endpoint допустим как селектор владельца process-спана, если обработка синхронная внутри HTTP.
-    Для обычного асинхронного consumer предпочтителен worker.
-    dbOperations допустим только для db_query; отсутствие означает все операции, включая OTHER.
-    Правило совпадает только при совпадении типа, обоих selectors и фильтра dbOperations.
-    Любой совпавший deny имеет приоритет над всеми allow, независимо от детализации.
-    Если deny нет и есть allow — allowed. Если совпадений нет — defaultAction.
-    Порядок правил не влияет на результат.
   components/schemas/Edge: |-
     Ключ агрегации: source,target,type,dbOperation. dbOperation обязателен только для db_query,
-    для остальных отсутствует. matchedRuleIds содержит ВСЕ совпавшие правила, отсортированные по ID.
-    forbidden = есть deny; unexpected = нет совпадений и defaultAction=deny; иначе allowed.
-    При default decisionSource=default и matchedRuleIds пуст. Метрики по опорному спану:
+    для остальных отсутствует. matchedRelationshipIds — все совпавшие connects, по unique-id.
+    Статусы определены в calmProfile.matching. Метрики по опорному спану:
     HTTP CLIENT; DB CLIENT; Kafka PRODUCER send; Kafka CONSUMER process.
     Для consume длительность — обработка, не время в очереди. Повторная обработка с новым spanId
     считается отдельной операцией, повторная доставка того же спана — нет.
@@ -127,4 +109,59 @@ contractDetails:
     kafka:enc(cluster):enc(topic)
     Для endpoint/worker имя сервиса берётся из parentId. parentId обязательно указывает на service.
     У service, postgres_database, kafka_topic parentId отсутствует. Идентичность регистрозависима;
-    label не участвует в сопоставлении. Неправильные ID и дубли идентичности отклоняются при PUT.
+    label не участвует в сопоставлении. Это ID выходного графа, а не CALM unique-id. Дубли привязок отклоняются при PUT.
+
+calmProfile:
+  version: '1.2'
+  schema: https://calm.finos.org/release/1.2/meta/calm.json
+  scope: |-
+    Один самодостаточный JSON. Поддерживаются nodes, connects и composed-of для worker.
+    Минимум один service. Другие node-type и relationship-type отклоняются с validation_error.
+    flows, controls, standards, decorators, timelines и details отклоняются как неподдерживаемые,
+    чтобы не создавать видимость их проверки. Прочие описательные поля сохраняются.
+    metadata в профиле — объект. Неизвестные поля metadata.archdrift отклоняются.
+    Старые корневые rules/defaultAction отклоняются. Это профиль ArchDrift, не весь CALM.
+  bindings: |-
+    Каждый узел содержит metadata.archdrift с обязательными полями для своего node-type:
+    service: serviceName; database (только PostgreSQL): instance, database;
+    worker: workerName; kafka-topic: cluster, topic. Другие поля привязки не допускаются.
+    worker принадлежит ровно одному service через composed-of {container: serviceId, nodes: [workerId]}.
+    Другие composed-of и циклы не поддерживаются. Вложенные worker не допускаются.
+    Только service может иметь interfaces. Каждый интерфейс задаёт unique-id и metadata.archdrift
+    с method и route (HTTP-метод uppercase и шаблон маршрута); definition-url/config не поддерживаются.
+    Ограничения значений соответствуют ServiceNode/EndpointNode/WorkerNode/PostgresNode/KafkaTopicNode.
+    CALM unique-id — непустые строки; узлы и связи уникальны в своих массивах,
+    интерфейсы — внутри узла. Привязки к каноническим идентичностям не дублируются.
+    CALM ID не обязаны совпадать с service.name или каноническими ID выходного графа.
+    label строится из CALM name, а при пустом name — из unique-id узла;
+    для endpoint — из method и route. Результат обрезается до 255 символов.
+    GraphNode.known означает точное объявление; calmNodeId/calmInterfaceId есть только при known=true.
+  relationships: |-
+    connects.source/destination: node ссылается на CALM узел; interfaces — необязательный
+    непустой список уникальных ID интерфейсов этого service. Отсутствие interfaces — весь узел.
+    Несколько interfaces задают альтернативы, два списка — все пары источника и назначения.
+    Необязательное metadata.archdrift.type: http_call, db_query, publish или consume.
+    Без type вид операции не ограничен. Допустимые пары после нормализации:
+    http_call: service|endpoint|worker -> service|endpoint;
+    db_query: service|endpoint|worker -> postgres_database;
+    publish: service|endpoint|worker -> kafka_topic;
+    consume: kafka_topic -> service|endpoint|worker.
+    Связь должна допускать хотя бы одну пару; явный type обязан быть совместим с концами.
+    SQL-операции остаются детализацией наблюдений; фильтров dbOperations нет.
+    protocol при наличии должен соответствовать type: HTTP/HTTPS -> http_call,
+    JDBC -> db_query; TCP не ограничивает вид операции (Kafka определяется по type или концам).
+    Другие значения protocol отклоняются в MVP.
+    protocol и type совместно ограничивают вид операции; HTTP и HTTPS отдельно не различаются.
+    composed-of задаёт только принадлежность, не декларацию взаимодействия.
+  matching: |-
+    Сервис без interfaces в конце connects охватывает себя и непосредственные endpoints/workers, включая необъявленные.
+    Конкретный интерфейс/worker/ресурс совпадает только с собственной идентичностью.
+    declared: есть хотя бы одно полное совпадение направления, концов и вида операции.
+    Широкая декларация не сужается добавлением конкретной. Обратные и транзитивные связи не выводятся.
+    Если полного совпадения нет, но service-level fallback мог бы совпасть с конкретным дочерним
+    селектором того же сервиса при наличии детализации, статус indeterminate.
+    Для такого кандидата остальные известные концы и вид операции должны быть совместимы.
+    Если нет ни полного, ни возможного совпадения — unexpected и unexpected_edge.
+    matchedRelationshipIds заполнен только для declared, иначе пуст.
+    known=false у endpoint/worker не создаёт нарушения при покрытии широкой декларацией.
+    Отсутствие наблюдений не считается drift; неизвестный сервис/ресурс не совпадает с известным.

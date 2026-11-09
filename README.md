@@ -18,9 +18,9 @@ flowchart LR
 ```
 
 1. **Сбор.** Сервисы отправляют трейсы через OpenTelemetry. Collector пересылает их в archdrift, тот сохраняет спаны.
-2. **Модель.** Ожидаемая архитектура загружается через API: список узлов и правила `allow` / `deny`.
-3. **Анализ.** По запросу за интервал времени archdrift строит фактический граф из сохранённых спанов и проверяет каждую связь по правилам.
-4. **Показ.** UI раз в 3–5 секунд запрашивает анализ за последние минуты и рисует граф: разрешённые связи — зелёные, неожиданные — жёлтые, запрещённые — красные. У каждой связи и нарушения есть пример трейса.
+2. **Модель.** Ожидаемая архитектура загружается через API: CALM 1.2 JSON с узлами, связями и привязками к телеметрии.
+3. **Анализ.** По запросу за интервал времени archdrift строит фактический граф из сохранённых спанов и сопоставляет каждую связь с декларацией.
+4. **Показ.** UI раз в 3–5 секунд запрашивает анализ за последние минуты и рисует граф: задекларированные связи — зелёные, незадекларированные — красные, недостаточно данных — серые. У каждой связи и нарушения есть пример трейса.
 
 ```mermaid
 sequenceDiagram
@@ -37,7 +37,7 @@ sequenceDiagram
     Note over U,EXT: Загрузка ожидаемой архитектуры
     U->>FE: Загрузить ожидаемую архитектуру
     FE->>BE: PUT HTTP JSON
-    BE->>BE: Проверить модель и правила
+    BE->>BE: Проверить CALM и привязки
     BE->>DB: SQL INSERT
     DB-->>BE: Модель сохранена
     BE-->>FE: HTTP 200 JSON
@@ -56,7 +56,7 @@ sequenceDiagram
     BE->>DB: SQL SELECT
     DB-->>BE: Ожидаемая архитектура и спаны
     BE->>BE: Построить фактический граф
-    BE->>BE: Проверить правила
+    BE->>BE: Сопоставить с декларацией
     BE->>BE: Найти нарушения
     BE-->>FE: HTTP 200 JSON
     FE-->>U: Граф и найденные нарушения
@@ -72,7 +72,11 @@ sequenceDiagram
 
 ## Модель архитектуры
 
-Модель состоит из **узлов**, **правил** и **действия по умолчанию** (`defaultAction`).
+Ожидаемая модель — **FINOS CALM 1.2**. `PUT /api/v1/architecture` принимает исходный JSON без обёртки; `GET` возвращает его в `model` вместе с версией. Профиль MVP и привязки к OpenTelemetry описаны в `calmProfile` файла [instrumentation.yaml](backend/api/instrumentation.yaml).
+
+Узлы CALM: `service`, `worker`, `database` (PostgreSQL), `kafka-topic`. HTTP endpoints — интерфейсы сервиса. Связи — `connects`; `composed-of` связывает worker с сервисом. Привязки к телеметрии обязательны в `metadata.archdrift`.
+
+Ниже — нормализованные узлы **выходного графа**; их канонические ID отличаются от произвольных CALM `unique-id`.
 
 ### Узлы
 
@@ -98,11 +102,11 @@ sequenceDiagram
 | `publish` | service / endpoint / worker → kafka_topic | Kafka PRODUCER, операция `send` |
 | `consume` | kafka_topic → service / endpoint / worker | Kafka CONSUMER, операция `process` |
 
-### Правила
+### Поддерживаемые декларации
 
-Каждое правило задаёт источник (`from`), назначение (`to`), тип связи (`type`) и действие: разрешить (`allow`) или запретить (`deny`).
+`connects` задаёт `source` и `destination`: CALM ID узла и необязательный список `interfaces`. Без списка связь охватывает весь сервис. Необязательный `metadata.archdrift.type` уточняет вид операции; без него подходят все совместимые виды.
 
-| Источник | Тип связи | Назначение | Что регулирует |
+| Источник | Тип связи | Назначение | Что описывает |
 | --- | --- | --- | --- |
 | Сервис A | `http_call` | Сервис B | HTTP-вызовы из A во все endpoints B |
 | Сервис A | `http_call` | Endpoint B | Вызовы конкретного endpoint из A |
@@ -120,65 +124,54 @@ sequenceDiagram
 | Kafka-топик | `consume` | Воркер | Обработка сообщений конкретным обработчиком |
 | Kafka-топик | `consume` | Endpoint | Обработка сообщений внутри HTTP-запроса |
 
-Сервис в любом конце правила охватывает себя и принадлежащие ему endpoints и воркеры. Конкретный endpoint, воркер, база или топик совпадает только с самим собой. Для `consume` направление отражает движение данных: от топика к обработчику.
-
-Для `db_query` можно задать фильтр `dbOperations`: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `OTHER`. Без фильтра правило действует на все операции БД.
+Сервис в любом конце связи охватывает себя и принадлежащие ему endpoints и воркеры. Конкретный endpoint, воркер, база или топик совпадает только с самим собой. Для `consume` направление отражает движение данных: от топика к обработчику.
 
 ### Как принимается решение
 
-Для каждой наблюдаемой связи:
-
-1. Есть хотя бы одно совпавшее правило `deny` → **`forbidden`** (красная). `deny` побеждает всегда, независимо от детализации и порядка правил.
-2. Иначе есть совпавшее `allow` → **`allowed`** (зелёная).
-3. Иначе совпадений нет → решает `defaultAction`: `allow` → `allowed`, `deny` → **`unexpected`** (жёлтая).
-
-Поле `decisionSource` показывает, откуда решение: `rules` или `default`. В `matchedRuleIds` перечислены все совпавшие правила.
-
-### Нарушения
-
-| Тип | Когда |
+| Статус | Условие |
 | --- | --- |
-| `forbidden_edge` | Связь запрещена правилом `deny` |
-| `unexpected_edge` | Связь не покрыта правилами, а `defaultAction = deny` |
-| `unknown_node` | В трейсах встретился узел, которого нет в модели |
+| `declared` | Есть хотя бы одна полностью совпавшая декларация |
+| `indeterminate` | Полного совпадения нет, но при уточнении service-level fallback мог бы совпасть конкретный endpoint/worker |
+| `unexpected` | Нет ни полного, ни возможного совпадения; создаётся `unexpected_edge` |
 
-- Один результат на ключ ребра и тип нарушения.
-- У каждого нарушения есть `exampleTraceId` — трейс-доказательство, его можно открыть в Jaeger.
-- Узлы и связи из модели, которые не встретились в трейсах, нарушениями **не считаются**: у таких узлов просто `observed = false`.
+- `matchedRelationshipIds` содержит CALM ID всех совпавших `connects`, иначе пуст.
+- Широкая связь A → B покрывает вызовы всех частей A в endpoints B. Конкретная связь рядом не сужает широкую.
+- Направление учитывается; обратные и транзитивные связи автоматически не выводятся.
+- SQL-операции остаются детализацией наблюдений, без отдельных фильтров.
+- Узлы без точного объявления имеют `known=false`; это само по себе не нарушение. Необъявленный endpoint или worker может быть покрыт связью сервисов.
+- Ненаблюдаемые связи не считаются нарушениями. Неполная телеметрия отражается в `diagnostics`.
+- У каждого `unexpected_edge` есть пример трейса. Отдельной политики разрешений нет.
 
-### Пример модели для демо
+### Пример CALM-модели
+
+Минимальный пример: любой HTTP-вызов `gateway` → `orders` соответствует декларации. Узлы, БД и Kafka-связи демо добавляются по тому же профилю.
 
 ```json
 {
-  "defaultAction": "deny",
+  "$schema": "https://calm.finos.org/release/1.2/meta/calm.json",
   "nodes": [
-    { "id": "service:gateway",  "label": "Gateway",  "type": "service", "serviceName": "gateway" },
-    { "id": "service:orders",   "label": "Orders",   "type": "service", "serviceName": "orders" },
-    { "id": "service:payments", "label": "Payments", "type": "service", "serviceName": "payments" },
-    { "id": "service:notifications", "label": "Notifications", "type": "service", "serviceName": "notifications" },
-
-    { "id": "endpoint:gateway:POST:%2Forders", "label": "POST /orders", "type": "endpoint", "parentId": "service:gateway", "method": "POST", "route": "/orders" },
-    { "id": "endpoint:orders:POST:%2Forders",  "label": "POST /orders", "type": "endpoint", "parentId": "service:orders",  "method": "POST", "route": "/orders" },
-    { "id": "worker:payments:order-created",      "label": "order-created", "type": "worker", "parentId": "service:payments",      "workerName": "order-created" },
-    { "id": "worker:notifications:order-created", "label": "order-created", "type": "worker", "parentId": "service:notifications", "workerName": "order-created" },
-
-    { "id": "postgres:main:orders_db",   "label": "orders_db",   "type": "postgres_database", "instance": "main", "database": "orders_db" },
-    { "id": "postgres:main:payments_db", "label": "payments_db", "type": "postgres_database", "instance": "main", "database": "payments_db" },
-    { "id": "kafka:main:order.created",  "label": "order.created", "type": "kafka_topic", "cluster": "main", "topic": "order.created" }
+    {
+      "unique-id": "gateway", "node-type": "service",
+      "name": "Gateway", "description": "Входной сервис",
+      "metadata": {"archdrift": {"serviceName": "gateway"}}
+    },
+    {
+      "unique-id": "orders", "node-type": "service",
+      "name": "Orders", "description": "Сервис заказов",
+      "metadata": {"archdrift": {"serviceName": "orders"}}
+    }
   ],
-  "rules": [
-    { "id": "gw-orders",              "from": "service:gateway",  "to": "service:orders",            "type": "http_call", "action": "allow" },
-    { "id": "orders-db",              "from": "service:orders",   "to": "postgres:main:orders_db",   "type": "db_query",  "action": "allow" },
-    { "id": "orders-publish",         "from": "service:orders",   "to": "kafka:main:order.created",  "type": "publish",   "action": "allow" },
-    { "id": "payments-consume",       "from": "kafka:main:order.created", "to": "service:payments",      "type": "consume", "action": "allow" },
-    { "id": "notifications-consume",  "from": "kafka:main:order.created", "to": "service:notifications", "type": "consume", "action": "allow" },
-    { "id": "payments-db",            "from": "service:payments", "to": "postgres:main:payments_db", "type": "db_query",  "action": "allow" },
-    { "id": "no-shared-orders-db",    "from": "service:payments", "to": "postgres:main:orders_db",   "type": "db_query",  "action": "deny" }
+  "relationships": [
+    {
+      "unique-id": "gateway-to-orders",
+      "relationship-type": {
+        "connects": {"source": {"node": "gateway"}, "destination": {"node": "orders"}}
+      },
+      "metadata": {"archdrift": {"type": "http_call"}}
+    }
   ]
 }
 ```
-
-Endpoints и воркеры, которые встречаются в трейсах, нужно объявить в модели. Иначе каждый из них станет нарушением `unknown_node`, даже если связь разрешена правилом сервиса. По той же причине служебные маршруты вроде `/health` не должны попадать в трейсы демо-сервисов.
 
 Загрузка модели:
 
@@ -216,7 +209,7 @@ ArchDrift видит только то, что есть в трейсах. По�
 | --- | --- | --- |
 | `POST` | `/v1/traces` | Приём трейсов от Collector (OTLP protobuf, без сжатия, до 4 МиБ) |
 | `GET` | `/api/v1/architecture` | Текущая модель архитектуры |
-| `PUT` | `/api/v1/architecture` | Полная замена модели (JSON) |
+| `PUT` | `/api/v1/architecture` | Полная замена модели (CALM 1.2 JSON) |
 | `GET` | `/api/v1/analysis?from=…&to=…` | Граф и нарушения за интервал `[from, to)`, не больше 24 ч |
 | `GET` | `/api/v1/traces/{traceId}` | Сохранённые спаны трейса |
 | `GET` | `/healthz` | Процесс жив |
@@ -248,6 +241,6 @@ make up
 1. `make up` — поднимается стенд, генератор нагрузки создаёт заказы.
 2. Открыть UI — все связи зелёные.
 3. Включить «плохой» вызов (`make bad-on` или кнопка в UI): сервис `payments` начинает читать `orders_db`.
-4. Через несколько секунд связь `payments → orders_db` становится красной (`forbidden`), в списке нарушений появляется запись с примером трейса.
+4. Через несколько секунд связь `payments → orders_db` становится красной (`unexpected`), в списке нарушений появляется запись с примером трейса.
 5. Выключить (`make bad-off`) — связь пропадает из анализа, когда выходит за окно времени.
 

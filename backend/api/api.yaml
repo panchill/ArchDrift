@@ -2,7 +2,7 @@
 openapi: 3.0.3
 info:
   title: ArchDrift MVP API
-  version: 0.2.0
+  version: 0.3.0
   description: 'MVP: HTTP, workers, PostgreSQL, Kafka. REST — JSON; ingestion — OTLP
     protobuf. Подробности: instrumentation.yaml.'
 servers:
@@ -44,8 +44,9 @@ paths:
       - Architecture
       operationId: replaceArchitecture
       summary: Полностью заменить ожидаемую архитектуру
-      description: Атомарная замена с увеличением version. Проверяются ID, parentId,
-        ссылки и типы правил. Последняя запись побеждает; ошибка не меняет модель.
+      description: Атомарная замена с увеличением version. Проверяются CALM 1.2,
+        ссылки и привязки к OTel; профиль в instrumentation.yaml. Последняя запись
+        побеждает; ошибка не меняет модель.
       requestBody:
         required: true
         content:
@@ -289,72 +290,37 @@ components:
     SpanId:
       type: string
       pattern: "^(?!0{16}$)[0-9a-f]{16}$"
-    Rule:
-      type: object
-      additionalProperties: false
-      required:
-      - id
-      - from
-      - to
-      - type
-      - action
-      properties:
-        id:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Уникальный в модели ID правила
-        from:
-          $ref: "#/components/schemas/NodeId"
-        to:
-          $ref: "#/components/schemas/NodeId"
-        type:
-          $ref: "#/components/schemas/EdgeType"
-        action:
-          type: string
-          enum:
-          - allow
-          - deny
-        dbOperations:
-          type: array
-          items:
-            $ref: "#/components/schemas/DbOperation"
-          minItems: 1
-          uniqueItems: true
-      description: |-
-        Сервис охватывает себя и свои endpoint/worker; остальные selectors точные.
-        http_call: service/endpoint/worker -> service/endpoint;
-        db_query: service/endpoint/worker -> postgres_database;
-        publish: service/endpoint/worker -> kafka_topic;
-        consume: kafka_topic -> service/endpoint/worker.
-        Любой deny приоритетнее allow; иначе defaultAction. Порядок не важен.
-        dbOperations только для db_query; без фильтра — все операции.
     ArchitectureInput:
       type: object
-      additionalProperties: false
       required:
+      - $schema
       - nodes
-      - defaultAction
-      - rules
+      - relationships
       properties:
-        nodes:
-          type: array
-          items:
-            $ref: "#/components/schemas/NodeDefinition"
-          minItems: 1
-          maxItems: 1000
-        defaultAction:
+        $schema:
           type: string
           enum:
-          - allow
-          - deny
-        rules:
+          - https://calm.finos.org/release/1.2/meta/calm.json
+        nodes:
           type: array
+          minItems: 1
+          maxItems: 1000
           items:
-            $ref: "#/components/schemas/Rule"
+            type: object
+            additionalProperties: true
+        relationships:
+          type: array
           maxItems: 10000
-      description: Должен быть хотя бы один service. Идентификаторы узлов и правил
-        уникальны. Циклы взаимодействий разрешены.
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+      description: |-
+        Исходный CALM JSON, без обёртки. Сервер проверяет официальную схему 1.2
+        и профиль ArchDrift из instrumentation.yaml (calmProfile).
+        OpenAPI 3.0 не воспроизводит JSON Schema 2020-12; object здесь не отменяет проверку.
+      externalDocs:
+        url: https://calm.finos.org/release/1.2/meta/calm.json
     Architecture:
       type: object
       additionalProperties: false
@@ -425,8 +391,7 @@ components:
       - firstSeenAt
       - lastSeenAt
       - status
-      - matchedRuleIds
-      - decisionSource
+      - matchedRelationshipIds
       - exampleTraceId
       - exampleSpanId
       properties:
@@ -464,30 +429,24 @@ components:
         status:
           type: string
           enum:
-          - allowed
+          - declared
           - unexpected
-          - forbidden
-        matchedRuleIds:
+          - indeterminate
+        matchedRelationshipIds:
           type: array
           items:
             type: string
           uniqueItems: true
-        decisionSource:
-          type: string
-          enum:
-          - rules
-          - default
+          description: Отсортированные CALM unique-id всех совпавших connects; иначе пусто
         exampleTraceId:
           $ref: "#/components/schemas/TraceId"
         exampleSpanId:
           $ref: "#/components/schemas/SpanId"
       description: 'Ключ: source,target,type,dbOperation. dbOperation только и обязательно
-        для db_query. matchedRuleIds — все совпадения. Метрики по опорным спанам,
+        для db_query. Семантика статусов — в instrumentation.yaml. Метрики по опорным спанам,
         не сообщениям.'
     Violation:
-      oneOf:
-      - $ref: "#/components/schemas/UnknownNodeViolation"
-      - $ref: "#/components/schemas/EdgeViolation"
+      $ref: "#/components/schemas/EdgeViolation"
     EdgeViolation:
       type: object
       additionalProperties: false
@@ -496,7 +455,6 @@ components:
       - source
       - target
       - edgeType
-      - matchedRuleIds
       - message
       - exampleTraceId
       - exampleSpanId
@@ -505,7 +463,6 @@ components:
           type: string
           enum:
           - unexpected_edge
-          - forbidden_edge
         source:
           $ref: "#/components/schemas/NodeId"
         target:
@@ -514,11 +471,6 @@ components:
           $ref: "#/components/schemas/EdgeType"
         dbOperation:
           $ref: "#/components/schemas/DbOperation"
-        matchedRuleIds:
-          type: array
-          items:
-            type: string
-          uniqueItems: true
         message:
           type: string
         exampleTraceId:
@@ -526,7 +478,7 @@ components:
         exampleSpanId:
           $ref: "#/components/schemas/SpanId"
       description: Один результат на ключ ребра и тип нарушения. dbOperation присутствует
-        только для db_query. matchedRuleIds как у соответствующего ребра.
+        только для db_query. Создаётся только для status=unexpected.
     Trace:
       type: object
       additionalProperties: false
@@ -882,35 +834,17 @@ components:
           $ref: "#/components/schemas/NodeDefinition"
         known:
           type: boolean
-          description: Идентичность узла присутствует в модели
+          description: Есть точное объявление в CALM; false само по себе не является нарушением
+        calmNodeId:
+          type: string
+          description: CALM unique-id точного узла или сервиса-владельца интерфейса
+        calmInterfaceId:
+          type: string
+          description: CALM unique-id интерфейса внутри calmNodeId; только для endpoint
         observed:
           type: boolean
           description: Узел обнаружен по данным интервала или является родительским
             сервисом обнаруженного узла
-    UnknownNodeViolation:
-      type: object
-      additionalProperties: false
-      required:
-      - type
-      - nodeId
-      - message
-      - exampleTraceId
-      - exampleSpanId
-      properties:
-        type:
-          type: string
-          enum:
-          - unknown_node
-        nodeId:
-          $ref: "#/components/schemas/NodeId"
-        message:
-          type: string
-        exampleTraceId:
-          $ref: "#/components/schemas/TraceId"
-        exampleSpanId:
-          $ref: "#/components/schemas/SpanId"
-      description: Один результат на наблюдаемый узел, отсутствующий в модели. Не
-        меняет решение allow/deny для рёбер.
     AnalysisDiagnostics:
       type: object
       additionalProperties: false
@@ -930,8 +864,8 @@ components:
           type: integer
           format: int64
           minimum: 0
-          description: Операции с хотя бы одним service вместо endpoint/worker; точные
-            дочерние правила к ним неприменимы
+          description: Операции с хотя бы одним service вместо endpoint/worker; возможен
+            indeterminate при недостатке детализации
         unresolvedResourceSpans:
           type: integer
           format: int64
