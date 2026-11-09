@@ -1,0 +1,483 @@
+
+{
+  "$schema": "https://calm.finos.org/release/1.2/meta/calm.json",
+  "nodes": [
+    {
+      "unique-id": "shop-api-service",
+      "node-type": "service",
+      "name": "shop-api-service",
+      "description": "Shop API backend service",
+      "interfaces": [
+        {
+          "unique-id": "shop-db-read",
+          "protocol": "JDBC",
+          "operation": "SELECT"
+        },
+        {
+          "unique-id": "publish-new-payment",
+          "protocol": "Kafka",
+          "topic": "new-payment"
+        },
+        {
+          "unique-id": "publish-cancel-order",
+          "protocol": "Kafka",
+          "topic": "cancel-order"
+        }
+      ]
+    },
+    {
+      "unique-id": "order-service",
+      "node-type": "service",
+      "name": "order-service",
+      "description": "Order management service",
+      "interfaces": [
+        {
+          "unique-id": "order-db",
+          "protocol": "JDBC"
+        },
+        {
+          "unique-id": "consume-new-order",
+          "protocol": "Kafka",
+          "topic": "new-order",
+          "worker": "new-order-consumer"
+        },
+        {
+          "unique-id": "get-order",
+          "protocol": "HTTP",
+          "method": "GET",
+          "path": "/orders/{id}"
+        },
+        {
+          "unique-id": "mark-order-paid",
+          "protocol": "HTTP",
+          "method": "POST",
+          "path": "/orders/{id}/paid"
+        }
+      ]
+    },
+    {
+      "unique-id": "payment-service",
+      "node-type": "service",
+      "name": "payment-service",
+      "description": "Payment processing service",
+      "interfaces": [
+        {
+          "unique-id": "consume-new-payment",
+          "protocol": "Kafka",
+          "topic": "new-payment",
+          "worker": "new-payment-consumer"
+        },
+        {
+          "unique-id": "publish-new-order",
+          "protocol": "Kafka",
+          "topic": "new-order"
+        },
+        {
+          "unique-id": "get-order-client",
+          "protocol": "HTTP",
+          "method": "GET",
+          "path": "/orders/{id}"
+        },
+        {
+          "unique-id": "mark-order-paid-client",
+          "protocol": "HTTP",
+          "method": "POST",
+          "path": "/orders/{id}/paid"
+        },
+        {
+          "unique-id": "payment-db-client",
+          "protocol": "JDBC"
+        }
+      ]
+    },
+    {
+      "unique-id": "shop-postgres",
+      "node-type": "database",
+      "name": "PostgreSQL",
+      "description": "Main PostgreSQL database, database shop",
+      "interfaces": [
+        {
+          "unique-id": "shop-jdbc",
+          "protocol": "JDBC",
+          "database": "shop",
+          "instance": "main"
+        }
+      ]
+    },
+    {
+      "unique-id": "new-payment-topic",
+      "node-type": "kafka-topic",
+      "name": "new-payment",
+      "description": "Kafka topic for new payment events",
+      "interfaces": [
+        {
+          "unique-id": "new-payment-channel",
+          "protocol": "Kafka",
+          "cluster": "shared",
+          "topic": "new-payment"
+        }
+      ]
+    },
+    {
+      "unique-id": "cancel-order-topic",
+      "node-type": "kafka-topic",
+      "name": "cancel-order",
+      "description": "Kafka topic for order cancellation events",
+      "interfaces": [
+        {
+          "unique-id": "cancel-order-channel",
+          "protocol": "Kafka",
+          "cluster": "shared",
+          "topic": "cancel-order"
+        }
+      ]
+    },
+    {
+      "unique-id": "new-order-topic",
+      "node-type": "kafka-topic",
+      "name": "new-order",
+      "description": "Kafka topic for new order events",
+      "interfaces": [
+        {
+          "unique-id": "new-order-channel",
+          "protocol": "Kafka",
+          "cluster": "shared",
+          "topic": "new-order"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "unique-id": "shop-api-db-ro",
+      "description": "Shop API reads data from PostgreSQL",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "shop-api-service",
+            "interfaces": ["shop-db-read"]
+          },
+          "destination": {
+            "node": "shop-postgres",
+            "interfaces": ["shop-jdbc"]
+          }
+        }
+      },
+      "protocol": "JDBC",
+      "metadata": {
+        "policy-rule-id": "shop-api-db-ro",
+        "action": "allow",
+        "interaction": "db_query",
+        "match": {
+          "dbOperations": ["SELECT"]
+        }
+      }
+    },
+    {
+      "unique-id": "order-db-rw",
+      "description": "Order service accesses PostgreSQL",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "order-service",
+            "interfaces": ["order-db"]
+          },
+          "destination": {
+            "node": "shop-postgres",
+            "interfaces": ["shop-jdbc"]
+          }
+        }
+      },
+      "protocol": "JDBC",
+      "metadata": {
+        "policy-rule-id": "order-db-rw",
+        "action": "allow",
+        "interaction": "db_query"
+      }
+    },
+    {
+      "unique-id": "shop-api-publish-new-payment",
+      "description": "Shop API publishes new payment events",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "shop-api-service",
+            "interfaces": ["publish-new-payment"]
+          },
+          "destination": {
+            "node": "new-payment-topic",
+            "interfaces": ["new-payment-channel"]
+          }
+        }
+      },
+      "metadata": {
+        "policy-rule-id": "shop-api-publish-new-payment",
+        "action": "allow",
+        "interaction": "publish"
+      }
+    },
+    {
+      "unique-id": "shop-api-publish-cancel-order",
+      "description": "Shop API publishes order cancellation events",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "shop-api-service",
+            "interfaces": ["publish-cancel-order"]
+          },
+          "destination": {
+            "node": "cancel-order-topic",
+            "interfaces": ["cancel-order-channel"]
+          }
+        }
+      },
+      "metadata": {
+        "policy-rule-id": "shop-api-publish-cancel-order",
+        "action": "allow",
+        "interaction": "publish"
+      }
+    },
+    {
+      "unique-id": "payment-consume-new-payment",
+      "description": "Payment service consumes new payment events",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "new-payment-topic",
+            "interfaces": ["new-payment-channel"]
+          },
+          "destination": {
+            "node": "payment-service",
+            "interfaces": ["consume-new-payment"]
+          }
+        }
+      },
+      "metadata": {
+        "policy-rule-id": "payment-consume-new-payment",
+        "action": "allow",
+        "interaction": "consume",
+        "worker": "new-payment-consumer"
+      }
+    },
+    {
+      "unique-id": "payment-publish-new-order",
+      "description": "Payment service publishes new order events",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "payment-service",
+            "interfaces": ["publish-new-order"]
+          },
+          "destination": {
+            "node": "new-order-topic",
+            "interfaces": ["new-order-channel"]
+          }
+        }
+      },
+      "metadata": {
+        "policy-rule-id": "payment-publish-new-order",
+        "action": "allow",
+        "interaction": "publish"
+      }
+    },
+    {
+      "unique-id": "order-consume-new-order",
+      "description": "Order service consumes new order events",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "new-order-topic",
+            "interfaces": ["new-order-channel"]
+          },
+          "destination": {
+            "node": "order-service",
+            "interfaces": ["consume-new-order"]
+          }
+        }
+      },
+      "metadata": {
+        "policy-rule-id": "order-consume-new-order",
+        "action": "allow",
+        "interaction": "consume",
+        "worker": "new-order-consumer"
+      }
+    },
+    {
+      "unique-id": "payment-http-order-get",
+      "description": "Payment service retrieves an order",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "payment-service",
+            "interfaces": ["get-order-client"]
+          },
+          "destination": {
+            "node": "order-service",
+            "interfaces": ["get-order"]
+          }
+        }
+      },
+      "protocol": "HTTP",
+      "metadata": {
+        "policy-rule-id": "payment-http-order-get",
+        "action": "allow",
+        "interaction": "http_call",
+        "method": "GET",
+        "route": "/orders/{id}"
+      }
+    },
+    {
+      "unique-id": "payment-http-order-paid",
+      "description": "Payment service marks an order as paid",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "payment-service",
+            "interfaces": ["mark-order-paid-client"]
+          },
+          "destination": {
+            "node": "order-service",
+            "interfaces": ["mark-order-paid"]
+          }
+        }
+      },
+      "protocol": "HTTP",
+      "metadata": {
+        "policy-rule-id": "payment-http-order-paid",
+        "action": "allow",
+        "interaction": "http_call",
+        "method": "POST",
+        "route": "/orders/{id}/paid"
+      }
+    },
+    {
+      "unique-id": "deny-payment-db",
+      "description": "Payment service is explicitly denied access to PostgreSQL",
+      "relationship-type": {
+        "connects": {
+          "source": {
+            "node": "payment-service",
+            "interfaces": ["payment-db-client"]
+          },
+          "destination": {
+            "node": "shop-postgres",
+            "interfaces": ["shop-jdbc"]
+          }
+        }
+      },
+      "protocol": "JDBC",
+      "metadata": {
+        "policy-rule-id": "deny-payment-db",
+        "action": "deny",
+        "interaction": "db_query"
+      }
+    }
+  ],
+  "metadata": {
+    "source-model": "service-access-policy",
+    "defaultAction": "deny",
+    "access-policy": {
+      "rules": [
+        {
+          "id": "shop-api-db-ro",
+          "from": "service:shop-api-service",
+          "to": "postgres:main:shop",
+          "type": "db_query",
+          "action": "allow",
+          "match": {
+            "dbOperations": ["SELECT"]
+          }
+        },
+        {
+          "id": "order-db-rw",
+          "from": "service:order-service",
+          "to": "postgres:main:shop",
+          "type": "db_query",
+          "action": "allow"
+        },
+        {
+          "id": "shop-api-publish-new-payment",
+          "from": "service:shop-api-service",
+          "to": "kafka:shared:new-payment",
+          "type": "publish",
+          "action": "allow"
+        },
+        {
+          "id": "shop-api-publish-cancel-order",
+          "from": "service:shop-api-service",
+          "to": "kafka:shared:cancel-order",
+          "type": "publish",
+          "action": "allow"
+        },
+        {
+          "id": "payment-consume-new-payment",
+          "from": "kafka:shared:new-payment",
+          "to": "service:payment-service",
+          "type": "consume",
+          "action": "allow",
+          "match": {
+            "target": {
+              "worker": "new-payment-consumer"
+            }
+          }
+        },
+        {
+          "id": "payment-publish-new-order",
+          "from": "service:payment-service",
+          "to": "kafka:shared:new-order",
+          "type": "publish",
+          "action": "allow"
+        },
+        {
+          "id": "order-consume-new-order",
+          "from": "kafka:shared:new-order",
+          "to": "service:order-service",
+          "type": "consume",
+          "action": "allow",
+          "match": {
+            "target": {
+              "worker": "new-order-consumer"
+            }
+          }
+        },
+        {
+          "id": "payment-http-order-get",
+          "from": "service:payment-service",
+          "to": "service:order-service",
+          "type": "http_call",
+          "action": "allow",
+          "match": {
+            "target": {
+              "endpoint": {
+                "method": "GET",
+                "route": "/orders/{id}"
+              }
+            }
+          }
+        },
+        {
+          "id": "payment-http-order-paid",
+          "from": "service:payment-service",
+          "to": "service:order-service",
+          "type": "http_call",
+          "action": "allow",
+          "match": {
+            "target": {
+              "endpoint": {
+                "method": "POST",
+                "route": "/orders/{id}/paid"
+              }
+            }
+          }
+        },
+        {
+          "id": "deny-payment-db",
+          "from": "service:payment-service",
+          "to": "postgres:main:shop",
+          "type": "db_query",
+          "action": "deny"
+        }
+      ]
+    }
+  }
+}
