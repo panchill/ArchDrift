@@ -1,0 +1,947 @@
+---
+openapi: 3.0.3
+info:
+  title: ArchDrift MVP API
+  version: 0.2.0
+  description: 'MVP: HTTP, workers, PostgreSQL, Kafka. REST — JSON; ingestion — OTLP
+    protobuf. Подробности: instrumentation.yaml.'
+servers:
+- url: http://localhost:8080
+  description: Локальный стенд
+security: []
+tags:
+- name: Architecture
+- name: Analysis
+- name: Traces
+- name: Ingestion
+- name: Health
+paths:
+  /api/v1/architecture:
+    get:
+      tags:
+      - Architecture
+      operationId: getArchitecture
+      summary: Получить текущую ожидаемую архитектуру
+      responses:
+        '200':
+          description: Текущая версия модели
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Architecture"
+        '404':
+          description: Модель ещё не загружена; code = architecture_not_configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '500':
+          $ref: "#/components/responses/InternalError"
+        '503':
+          $ref: "#/components/responses/Unavailable"
+    put:
+      tags:
+      - Architecture
+      operationId: replaceArchitecture
+      summary: Полностью заменить ожидаемую архитектуру
+      description: Атомарная замена с увеличением version. Проверяются ID, parentId,
+        ссылки и типы правил. Последняя запись побеждает; ошибка не меняет модель.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArchitectureInput"
+      responses:
+        '200':
+          description: Модель сохранена, включая первое создание
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Architecture"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '415':
+          $ref: "#/components/responses/UnsupportedMediaType"
+        '500':
+          $ref: "#/components/responses/InternalError"
+        '503':
+          $ref: "#/components/responses/Unavailable"
+  /api/v1/analysis:
+    get:
+      tags:
+      - Analysis
+      operationId: getAnalysis
+      summary: Получить граф и нарушения за интервал
+      description: Интервал [from,to), максимум 24 ч. Текущая модель, детальный граф.
+        Поздние спаны могут изменить результат. Нет модели — 409; нет данных — пустые
+        связи.
+      parameters:
+      - name: from
+        in: query
+        required: true
+        description: Начало интервала включительно, RFC 3339 с часовым поясом
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: true
+        description: Конец интервала исключительно, RFC 3339 с часовым поясом
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: Анализ по текущей версии архитектуры
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analysis"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '409':
+          description: Модель ещё не загружена; code = architecture_not_configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '500':
+          $ref: "#/components/responses/InternalError"
+        '503':
+          $ref: "#/components/responses/Unavailable"
+  /api/v1/traces/{traceId}:
+    get:
+      tags:
+      - Traces
+      operationId: getTrace
+      summary: Получить сохранённые спаны трейса
+      description: Все доступные спаны по startTime,spanId. Полнота не гарантируется;
+        после retention возможен 404.
+      parameters:
+      - name: traceId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/TraceId"
+      responses:
+        '200':
+          description: Доступная часть трейса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trace"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '404':
+          description: Ни одного спана не найдено; code = trace_not_found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '500':
+          $ref: "#/components/responses/InternalError"
+        '503':
+          $ref: "#/components/responses/Unavailable"
+  /v1/traces:
+    post:
+      tags:
+      - Ingestion
+      operationId: exportTraces
+      summary: Приём OTLP/HTTP traces от Collector
+      description: OTLP ExportTraceServiceRequest, protobuf без сжатия, до 4 MiB.
+        Дедупликация по trace_id/span_id. Частичное отклонение — partial_success;
+        детали в instrumentation.yaml.
+      externalDocs:
+        url: https://opentelemetry.io/docs/specs/otlp/
+      parameters:
+      - name: Content-Encoding
+        in: header
+        required: false
+        schema:
+          type: string
+          enum:
+          - identity
+      requestBody:
+        required: true
+        content:
+          application/x-protobuf:
+            schema:
+              type: string
+              format: binary
+              description: ExportTraceServiceRequest
+      responses:
+        '200':
+          description: 'ExportTraceServiceResponse protobuf: пустое сообщение при
+            полном успехе; partial_success при частичном приёме.'
+          content:
+            application/x-protobuf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: "#/components/responses/OtlpBadRequest"
+        '413':
+          description: Тело больше 4 MiB; protobuf google.rpc.Status
+          content:
+            application/x-protobuf:
+              schema:
+                type: string
+                format: binary
+        '415':
+          description: Неподдерживаемый Content-Type или Content-Encoding; protobuf
+            google.rpc.Status
+          content:
+            application/x-protobuf:
+              schema:
+                type: string
+                format: binary
+        '503':
+          description: Временная ошибка; protobuf google.rpc.Status. Collector может
+            повторить пакет.
+          headers:
+            Retry-After:
+              description: Рекомендуемая задержка повторной отправки в секундах
+              schema:
+                type: integer
+                minimum: 1
+          content:
+            application/x-protobuf:
+              schema:
+                type: string
+                format: binary
+  /healthz:
+    get:
+      tags:
+      - Health
+      operationId: getLiveness
+      summary: Проверить работоспособность процесса без проверки БД
+      responses:
+        '200':
+          description: Процесс работает
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /readyz:
+    get:
+      tags:
+      - Health
+      operationId: getReadiness
+      summary: Проверить доступность БД и завершение миграций
+      description: Отсутствие загруженной архитектурной модели не влияет на готовность.
+      responses:
+        '200':
+          description: Приложение готово принимать запросы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        '503':
+          description: БД недоступна или миграции не завершены
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+components:
+  responses:
+    BadRequest:
+      description: Невалидный JSON, параметры или модель; code = validation_error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnsupportedMediaType:
+      description: Ожидается application/json; code = unsupported_media_type
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: Внутренняя ошибка; code = internal_error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unavailable:
+      description: БД временно недоступна; code = service_unavailable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    OtlpBadRequest:
+      description: Неразбираемый protobuf; тело google.rpc.Status, не JSON Error
+      content:
+        application/x-protobuf:
+          schema:
+            type: string
+            format: binary
+  schemas:
+    ServiceName:
+      type: string
+      minLength: 1
+      maxLength: 255
+      pattern: "^\\S(?:.*\\S)?$"
+      description: Непустой service.name без пробелов по краям, сравнение регистрозависимое
+    TraceId:
+      type: string
+      pattern: "^(?!0{32}$)[0-9a-f]{32}$"
+    SpanId:
+      type: string
+      pattern: "^(?!0{16}$)[0-9a-f]{16}$"
+    Rule:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - from
+      - to
+      - type
+      - action
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Уникальный в модели ID правила
+        from:
+          $ref: "#/components/schemas/NodeId"
+        to:
+          $ref: "#/components/schemas/NodeId"
+        type:
+          $ref: "#/components/schemas/EdgeType"
+        action:
+          type: string
+          enum:
+          - allow
+          - deny
+        dbOperations:
+          type: array
+          items:
+            $ref: "#/components/schemas/DbOperation"
+          minItems: 1
+          uniqueItems: true
+      description: |-
+        Сервис охватывает себя и свои endpoint/worker; остальные selectors точные.
+        http_call: service/endpoint/worker -> service/endpoint;
+        db_query: service/endpoint/worker -> postgres_database;
+        publish: service/endpoint/worker -> kafka_topic;
+        consume: kafka_topic -> service/endpoint/worker.
+        Любой deny приоритетнее allow; иначе defaultAction. Порядок не важен.
+        dbOperations только для db_query; без фильтра — все операции.
+    ArchitectureInput:
+      type: object
+      additionalProperties: false
+      required:
+      - nodes
+      - defaultAction
+      - rules
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/NodeDefinition"
+          minItems: 1
+          maxItems: 1000
+        defaultAction:
+          type: string
+          enum:
+          - allow
+          - deny
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rule"
+          maxItems: 10000
+      description: Должен быть хотя бы один service. Идентификаторы узлов и правил
+        уникальны. Циклы взаимодействий разрешены.
+    Architecture:
+      type: object
+      additionalProperties: false
+      required:
+      - version
+      - updatedAt
+      - model
+      properties:
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+        model:
+          $ref: "#/components/schemas/ArchitectureInput"
+    Analysis:
+      type: object
+      additionalProperties: false
+      required:
+      - architectureVersion
+      - from
+      - to
+      - generatedAt
+      - nodes
+      - edges
+      - violations
+      - diagnostics
+      properties:
+        architectureVersion:
+          type: integer
+          format: int64
+          minimum: 1
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        generatedAt:
+          type: string
+          format: date-time
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/GraphNode"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/Edge"
+        violations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Violation"
+        diagnostics:
+          $ref: "#/components/schemas/AnalysisDiagnostics"
+    Edge:
+      type: object
+      additionalProperties: false
+      required:
+      - source
+      - target
+      - type
+      - observedOperations
+      - errorOperations
+      - avgDurationMs
+      - firstSeenAt
+      - lastSeenAt
+      - status
+      - matchedRuleIds
+      - decisionSource
+      - exampleTraceId
+      - exampleSpanId
+      properties:
+        source:
+          $ref: "#/components/schemas/NodeId"
+        target:
+          $ref: "#/components/schemas/NodeId"
+        type:
+          $ref: "#/components/schemas/EdgeType"
+        dbOperation:
+          $ref: "#/components/schemas/DbOperation"
+        observedOperations:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Число уникальных опорных спанов, не число сообщений и не оценка
+            полного трафика
+        errorOperations:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Опорные спаны со статусом ERROR; не больше observedOperations
+        avgDurationMs:
+          type: number
+          format: double
+          minimum: 0
+        firstSeenAt:
+          type: string
+          format: date-time
+          description: Минимальный startTime опорных спанов интервала
+        lastSeenAt:
+          type: string
+          format: date-time
+          description: Максимальный startTime опорных спанов интервала
+        status:
+          type: string
+          enum:
+          - allowed
+          - unexpected
+          - forbidden
+        matchedRuleIds:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
+        decisionSource:
+          type: string
+          enum:
+          - rules
+          - default
+        exampleTraceId:
+          $ref: "#/components/schemas/TraceId"
+        exampleSpanId:
+          $ref: "#/components/schemas/SpanId"
+      description: 'Ключ: source,target,type,dbOperation. dbOperation только и обязательно
+        для db_query. matchedRuleIds — все совпадения. Метрики по опорным спанам,
+        не сообщениям.'
+    Violation:
+      oneOf:
+      - $ref: "#/components/schemas/UnknownNodeViolation"
+      - $ref: "#/components/schemas/EdgeViolation"
+    EdgeViolation:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - source
+      - target
+      - edgeType
+      - matchedRuleIds
+      - message
+      - exampleTraceId
+      - exampleSpanId
+      properties:
+        type:
+          type: string
+          enum:
+          - unexpected_edge
+          - forbidden_edge
+        source:
+          $ref: "#/components/schemas/NodeId"
+        target:
+          $ref: "#/components/schemas/NodeId"
+        edgeType:
+          $ref: "#/components/schemas/EdgeType"
+        dbOperation:
+          $ref: "#/components/schemas/DbOperation"
+        matchedRuleIds:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
+        message:
+          type: string
+        exampleTraceId:
+          $ref: "#/components/schemas/TraceId"
+        exampleSpanId:
+          $ref: "#/components/schemas/SpanId"
+      description: Один результат на ключ ребра и тип нарушения. dbOperation присутствует
+        только для db_query. matchedRuleIds как у соответствующего ребра.
+    Trace:
+      type: object
+      additionalProperties: false
+      required:
+      - traceId
+      - spans
+      properties:
+        traceId:
+          $ref: "#/components/schemas/TraceId"
+        spans:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Span"
+    Span:
+      type: object
+      additionalProperties: false
+      required:
+      - spanId
+      - serviceName
+      - name
+      - kind
+      - startTime
+      - endTime
+      - durationMs
+      - status
+      - attributes
+      - resourceAttributes
+      - links
+      properties:
+        spanId:
+          $ref: "#/components/schemas/SpanId"
+        parentSpanId:
+          $ref: "#/components/schemas/SpanId"
+        serviceName:
+          $ref: "#/components/schemas/ServiceName"
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - UNSPECIFIED
+          - INTERNAL
+          - SERVER
+          - CLIENT
+          - PRODUCER
+          - CONSUMER
+        startTime:
+          type: string
+          format: date-time
+          description: RFC 3339, допускаются наносекунды
+        endTime:
+          type: string
+          format: date-time
+          description: Не раньше startTime
+        durationMs:
+          type: number
+          format: double
+          minimum: 0
+        status:
+          type: string
+          enum:
+          - UNSET
+          - OK
+          - ERROR
+        statusMessage:
+          type: string
+        attributes:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/AttributeValue"
+        resourceAttributes:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/AttributeValue"
+        links:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - traceId
+            - spanId
+            properties:
+              traceId:
+                $ref: "#/components/schemas/TraceId"
+              spanId:
+                $ref: "#/components/schemas/SpanId"
+      description: REST-представление. parentSpanId отсутствует у корня. links содержит
+        ссылки OTel; Kafka process может находиться в отдельном трейсе. links пуст
+        при отсутствии ссылок.
+    AttributeValue:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - value
+      properties:
+        type:
+          type: string
+          enum:
+          - string
+          - bool
+          - int
+          - double
+          - bytes
+          - array
+          - kvlist
+        value:
+          type: string
+          description: 'Строка: int — десятичный int64, bytes — base64, array/kvlist
+            — JSON с вложенными AttributeValue. Детали в instrumentation.yaml.'
+    Health:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+          - not_ready
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      properties:
+        code:
+          type: string
+          enum:
+          - validation_error
+          - architecture_not_configured
+          - trace_not_found
+          - unsupported_media_type
+          - internal_error
+          - service_unavailable
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - field
+            - message
+            properties:
+              field:
+                type: string
+                description: Путь поля или имя параметра
+              message:
+                type: string
+    NodeId:
+      type: string
+      minLength: 1
+      maxLength: 2048
+      description: Канонический ID; см. описание NodeDefinition. Не произвольный пользовательский
+        alias.
+    ServiceNode:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - label
+      - type
+      - serviceName
+      properties:
+        id:
+          $ref: "#/components/schemas/NodeId"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Отображаемое имя; не влияет на идентичность
+        type:
+          type: string
+          enum:
+          - service
+        serviceName:
+          $ref: "#/components/schemas/ServiceName"
+    EndpointNode:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - label
+      - type
+      - parentId
+      - method
+      - route
+      properties:
+        id:
+          $ref: "#/components/schemas/NodeId"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Отображаемое имя; не влияет на идентичность
+        type:
+          type: string
+          enum:
+          - endpoint
+        parentId:
+          $ref: "#/components/schemas/NodeId"
+        method:
+          type: string
+          pattern: "^[A-Z]+$"
+          maxLength: 32
+          description: HTTP метод в верхнем регистре
+        route:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          pattern: "^/"
+          description: Шаблон маршрута, например /orders/{id}; не фактический URL
+    WorkerNode:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - label
+      - type
+      - parentId
+      - workerName
+      properties:
+        id:
+          $ref: "#/components/schemas/NodeId"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Отображаемое имя; не влияет на идентичность
+        type:
+          type: string
+          enum:
+          - worker
+        parentId:
+          $ref: "#/components/schemas/NodeId"
+        workerName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Устойчивое имя задачи или обработчика
+    PostgresNode:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - label
+      - type
+      - instance
+      - database
+      properties:
+        id:
+          $ref: "#/components/schemas/NodeId"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Отображаемое имя; не влияет на идентичность
+        type:
+          type: string
+          enum:
+          - postgres_database
+        instance:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Логическое имя экземпляра PostgreSQL
+        database:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Имя базы, не таблицы
+    KafkaTopicNode:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - label
+      - type
+      - cluster
+      - topic
+      properties:
+        id:
+          $ref: "#/components/schemas/NodeId"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Отображаемое имя; не влияет на идентичность
+        type:
+          type: string
+          enum:
+          - kafka_topic
+        cluster:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Логическое имя Kafka-кластера
+        topic:
+          type: string
+          minLength: 1
+          maxLength: 249
+          description: Имя топика
+    NodeDefinition:
+      oneOf:
+      - $ref: "#/components/schemas/ServiceNode"
+      - $ref: "#/components/schemas/EndpointNode"
+      - $ref: "#/components/schemas/WorkerNode"
+      - $ref: "#/components/schemas/PostgresNode"
+      - $ref: "#/components/schemas/KafkaTopicNode"
+      discriminator:
+        propertyName: type
+        mapping:
+          service: "#/components/schemas/ServiceNode"
+          endpoint: "#/components/schemas/EndpointNode"
+          worker: "#/components/schemas/WorkerNode"
+          postgres_database: "#/components/schemas/PostgresNode"
+          kafka_topic: "#/components/schemas/KafkaTopicNode"
+      description: |-
+        Канонические ID: service:<name>; endpoint:<service>:<method>:<route>;
+        worker:<service>:<name>; postgres:<instance>:<database>; kafka:<cluster>:<topic>.
+        Компоненты — percent-encoded UTF-8. parentId у endpoint/worker указывает на service.
+        label не влияет на идентичность. Полные правила кодирования — в instrumentation.yaml.
+    EdgeType:
+      type: string
+      enum:
+      - http_call
+      - db_query
+      - publish
+      - consume
+    DbOperation:
+      type: string
+      enum:
+      - SELECT
+      - INSERT
+      - UPDATE
+      - DELETE
+      - OTHER
+    GraphNode:
+      type: object
+      additionalProperties: false
+      required:
+      - node
+      - known
+      - observed
+      properties:
+        node:
+          $ref: "#/components/schemas/NodeDefinition"
+        known:
+          type: boolean
+          description: Идентичность узла присутствует в модели
+        observed:
+          type: boolean
+          description: Узел обнаружен по данным интервала или является родительским
+            сервисом обнаруженного узла
+    UnknownNodeViolation:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - nodeId
+      - message
+      - exampleTraceId
+      - exampleSpanId
+      properties:
+        type:
+          type: string
+          enum:
+          - unknown_node
+        nodeId:
+          $ref: "#/components/schemas/NodeId"
+        message:
+          type: string
+        exampleTraceId:
+          $ref: "#/components/schemas/TraceId"
+        exampleSpanId:
+          $ref: "#/components/schemas/SpanId"
+      description: Один результат на наблюдаемый узел, отсутствующий в модели. Не
+        меняет решение allow/deny для рёбер.
+    AnalysisDiagnostics:
+      type: object
+      additionalProperties: false
+      required:
+      - unmatchedHttpClientSpans
+      - serviceLevelOperations
+      - unresolvedResourceSpans
+      - ignoredMessagingSpans
+      properties:
+        unmatchedHttpClientSpans:
+          type: integer
+          format: int64
+          minimum: 0
+          description: HTTP CLIENT без парного SERVER и без известного имени назначения;
+            ребро не построено
+        serviceLevelOperations:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Операции с хотя бы одним service вместо endpoint/worker; точные
+            дочерние правила к ним неприменимы
+        unresolvedResourceSpans:
+          type: integer
+          format: int64
+          minimum: 0
+          description: DB/Kafka спаны с неполной идентичностью ресурса; не создают
+            рёбер
+        ignoredMessagingSpans:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Kafka операции не send/process; не создают рёбер
+      description: Диагностика ограничений наблюдения. Отсутствие нарушения не доказывает
+        соответствие при неполной инструментации.
