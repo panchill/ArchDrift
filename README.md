@@ -17,6 +17,54 @@ flowchart LR
     A -- GET /api/v1/analysis --> U[UI<br/>схема с подсветкой]
 ```
 
+```mermaid
+sequenceDiagram
+    title ArchDrift — проверка архитектуры
+    autonumber
+ 
+    actor U as Пользователь
+    participant FE as Frontend<br/>React / TypeScript
+    participant BE as Backend<br/>Go
+    participant DB as PostgreSQL
+    participant COL as OpenTelemetry<br/>Collector
+    participant EXT as Внешняя система<br/>OpenTelemetry SDK
+ 
+    Note over U,EXT: Загрузка ожидаемой архитектуры
+    U->>FE: Загрузить ожидаемую архитектуру
+    FE->>BE: PUT HTTP JSON
+    BE->>BE: Проверить модель и правила
+    BE->>DB: SQL INSERT
+    DB-->>BE: Модель сохранена
+    BE-->>FE: HTTP 200 JSON
+    FE-->>U: Архитектура загружена
+ 
+    Note over U,EXT: Сбор телеметрии
+    EXT-)COL: OTLP HTTP Protobuf
+    COL->>BE: POST HTTP Protobuf
+    BE->>DB: SQL INSERT
+    DB-->>BE: Спаны сохранены
+    BE-->>COL: HTTP 200 Protobuf
+ 
+    Note over U,EXT: Анализ архитектуры
+    U->>FE: Выбрать период и открыть граф
+    FE->>BE: GET HTTP JSON
+    BE->>DB: SQL SELECT
+    DB-->>BE: Ожидаемая архитектура и спаны
+    BE->>BE: Построить фактический граф
+    BE->>BE: Проверить правила
+    BE->>BE: Найти нарушения
+    BE-->>FE: HTTP 200 JSON
+    FE-->>U: Граф и найденные нарушения
+ 
+    Note over U,EXT: Просмотр нарушения
+    U->>FE: Выбрать нарушение
+    FE->>BE: GET HTTP JSON
+    BE->>DB: SQL SELECT
+    DB-->>BE: Спаны трейса
+    BE-->>FE: HTTP 200 JSON
+    FE-->>U: Детали нарушения
+```
+
 1. **Сбор.** Сервисы отправляют трейсы через OpenTelemetry. Collector пересылает их в archdrift, тот сохраняет спаны.
 2. **Модель.** Ожидаемая архитектура загружается через API: список узлов и правила `allow` / `deny`.
 3. **Анализ.** По запросу за интервал времени archdrift строит фактический граф из сохранённых спанов и проверяет каждую связь по правилам.
