@@ -1,0 +1,130 @@
+---
+instrumentation:
+  scope: Соглашение для контролируемого демо. Все перечисленные custom attributes
+    — проектные archdrift.*, не стандарт OpenTelemetry.
+  identity: resource service.name обязателен. Логические instance/cluster одинаковы
+    во всех сервисах; адреса, IP, порты не используются как канонические ID.
+  http: HTTP CLIENT определяется наличием http.request.method; SERVER содержит http.request.method
+    и по возможности http.route. Пара по trace_id и SERVER.parent_span_id=CLIENT.span_id.
+    Destination endpoint строится по SERVER.service.name, method, route. Нет route
+    — destination service. Нет SERVER — допускается destination service только при
+    явном archdrift.peer.service; иначе unmatchedHttpClientSpans. CLIENT — единственный
+    опорный спан, SERVER повторно вызов не считает.
+  owner: 'Для исходящего HTTP, DB или publish ищется ближайший предок в том же сервисе:
+    спан с archdrift.worker.name либо HTTP SERVER с method+route. Поиск ограничен
+    текущим trace, прекращается при переходе в другой service, отсутствии предка или
+    цикле. Если владелец не найден — service. Для consume владелец определяется сначала
+    по самому process-спану, затем по его предкам. Все наблюдаемые HTTP SERVER и спаны
+    с worker.name также создают узлы, даже без исходящих рёбер.'
+  worker: Спан запуска задачи содержит archdrift.worker.name. Для Kafka process он
+    также содержит устойчивое имя обработчика. Любые goroutine автоматически воркерами
+    не считаются.
+  postgres: 'CLIENT span: db.system.name=postgresql, db.namespace=<database>, archdrift.postgres.instance=<logical
+    instance>. db.operation.name нормализуется uppercase; SELECT/INSERT/UPDATE/DELETE
+    сохраняются, остальные/отсутствующие -> OTHER. Ребро owner -> postgres_database,
+    type=db_query. SQL и таблицы не парсятся.'
+  kafka: messaging.system=kafka, messaging.destination.name=<topic>, archdrift.kafka.cluster=<logical
+    cluster>. PRODUCER + messaging.operation.type=send создаёт owner -> topic (publish).
+    CONSUMER + messaging.operation.type=process создаёт topic -> owner (consume).
+    receive/poll/settle не учитываются в графе. Для batch одна операция равна одному
+    спану, не числу сообщений. Нужен один topic на спан.
+  asynchronous: Publish и consume строятся независимо; producer/consumer не обязаны
+    иметь общий trace или parent. Span links сохраняются для просмотра. End-to-end
+    задержка и гарантии доставки не вычисляются.
+  missingData: Нет идентичности PostgreSQL/Kafka — unresolvedResourceSpans и без ребра.
+    Нет endpoint/worker — service-level fallback с diagnostics. Это снижение детализации,
+    не доказательство отсутствия запрещённого вызова.
+  discovery: Неизвестные узлы и их родительские сервисы добавляются только в фактический
+    граф. Ожидаемая модель автоматически не меняется.
+contractDetails:
+  info: |-
+    ArchDrift MVP: один Go-бэкенд, одна система и одно окружение. Локальный MVP без аутентификации.
+    Постоянный приём OTLP; построение графа и проверка правил по запросу.
+    Поддерживаются HTTP endpoints, фоновые воркеры, PostgreSQL-базы и Kafka-топики.
+    REST — JSON; ingestion — бинарный OTLP protobuf. Регистрация Collector не требуется.
+    Версия 0.2.0 несовместима с 0.1.0: services заменены на nodes, правила и рёбра типизированы.
+    Граф всегда детальный. Сворачивание endpoints/workers до сервисов выполняет frontend.
+    Принадлежность parentId не является ребром взаимодействия и не проверяется правилами.
+    Контракт инструментации MVP приведён в x-archdrift-instrumentation; это соглашение проекта,
+    а не утверждение об автоматической поддержке всех приложений и библиотек.
+  paths//api/v1/architecture/put: |-
+    Атомарно создаёт/заменяет модель. Первая version=1, каждая запись увеличивает версию.
+    При конкурентных PUT побеждает последняя завершённая транзакция. Исторический анализ также использует текущую модель.
+    Проверяются канонические ID, уникальность ID и идентичностей, parentId и принадлежность,
+    наличие service, ссылки правил, совместимость типов концов/связи, фильтр dbOperations.
+    Одинаковые selectors/type/filter/action с разными id считаются дубликатами и отклоняются.
+    Противоположные действия и перекрывающиеся selectors разрешены: deny всегда побеждает.
+    Self-call сервиса и взаимодействия между операциями внутри сервиса допустимы.
+    Ошибка валидации не изменяет модель. YAML-импорт вне MVP; endpoint принимает JSON.
+  paths//api/v1/analysis/get: |-
+    Интервал [from,to); from<to, максимум 24 часа. Одна текущая версия модели и согласованный снимок спанов.
+    Нет модели — 409. Нет данных — 200 с узлами модели observed=false, пустыми edges/violations.
+    Граф включает узлы модели и наблюдаемые узлы с их родительскими сервисами.
+    В интервал должен попадать startTime опорного спана; связанные спаны и предки ищутся во всех сохранённых данных.
+    Идентичность и построение описаны в NodeDefinition и x-archdrift-instrumentation.
+    Спаны могут приходить поздно, повторный анализ того же интервала может измениться.
+    Рёбра агрегируются по source,target,type,dbOperation. Один опорный спан учитывается один раз.
+    Правила вычисляются по Rule: сервис охватывает непосредственные endpoint/worker, deny всегда побеждает.
+    Конкретные правила endpoint/worker не совпадают с service-level fallback; такие операции отражаются в diagnostics.
+    Unknown_node — отдельное нарушение декларации, даже если взаимодействие разрешено правилом сервиса.
+    Ненаблюдаемые узлы и связи не считаются нарушениями. Один violation на узел либо ключ ребра и тип.
+    Сортировка: nodes по node.id, edges по source,target,type,dbOperation, violations по type и объекту.
+    Frontend сворачивает граф до сервисов для обзора, но проверка правил выполнена до сворачивания.
+    Пагинации нет; frontend может опрашивать каждые 3–5 секунд.
+  paths//api/v1/traces/{traceId}/get: |
+    Возвращает все доступные спаны, отсортированные по startTime, затем spanId.
+    Полнота трейса не гарантируется; поздние спаны могут появиться позже.
+    После удаления данных по retention ранее известный traceId может вернуть 404.
+  paths//v1/traces/post: |
+    Бинарный opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest.
+    Это OTLP endpoint, не REST JSON. MVP поддерживает только protobuf без сжатия;
+    Collector должен использовать compression: none. Content-Encoding отсутствует
+    либо равен identity. Максимальный размер тела 4 MiB.
+    Нулевой размер protobuf допустим и означает пустой пакет.
+    Успешные спаны сохраняются до отправки 200. Дедупликация по (trace_id, span_id),
+    первая сохранённая запись побеждает. Дубликаты считаются принятыми.
+    Спаны с нулевыми/невалидными ID, отсутствующим service.name или end < start
+    отклоняются через partial_success с rejected_spans и error_message.
+    Неразбираемый protobuf возвращает 400; временная ошибка БД — 503.
+    OpenAPI описывает бинарные тела как string/binary; protobuf-типы берутся из
+    официального opentelemetry-proto, их Go-типы не генерируются из этого YAML.
+  components/schemas/Rule: |-
+    from/to должны ссылаться на узлы модели. Сервис в любом конце правила совпадает с самим
+    сервисом и его непосредственными endpoint/worker, включая обнаруженные незадекларированные дочерние узлы.
+    Конкретный endpoint/worker/resource совпадает только с самим собой. Метки и префиксы ID не являются selectors.
+    Допустимые пары:
+    http_call: service|endpoint|worker -> service|endpoint;
+    db_query: service|endpoint|worker -> postgres_database;
+    publish: service|endpoint|worker -> kafka_topic;
+    consume: kafka_topic -> service|endpoint|worker.
+    Для consume endpoint допустим как селектор владельца process-спана, если обработка синхронная внутри HTTP.
+    Для обычного асинхронного consumer предпочтителен worker.
+    dbOperations допустим только для db_query; отсутствие означает все операции, включая OTHER.
+    Правило совпадает только при совпадении типа, обоих selectors и фильтра dbOperations.
+    Любой совпавший deny имеет приоритет над всеми allow, независимо от детализации.
+    Если deny нет и есть allow — allowed. Если совпадений нет — defaultAction.
+    Порядок правил не влияет на результат.
+  components/schemas/Edge: |-
+    Ключ агрегации: source,target,type,dbOperation. dbOperation обязателен только для db_query,
+    для остальных отсутствует. matchedRuleIds содержит ВСЕ совпавшие правила, отсортированные по ID.
+    forbidden = есть deny; unexpected = нет совпадений и defaultAction=deny; иначе allowed.
+    При default decisionSource=default и matchedRuleIds пуст. Метрики по опорному спану:
+    HTTP CLIENT; DB CLIENT; Kafka PRODUCER send; Kafka CONSUMER process.
+    Для consume длительность — обработка, не время в очереди. Повторная обработка с новым spanId
+    считается отдельной операцией, повторная доставка того же спана — нет.
+  components/schemas/AttributeValue/properties/value: |
+    Строковое представление для UI. string — исходный текст, bool — true/false,
+    int — десятичный int64, double — число или NaN/Infinity/-Infinity,
+    bytes — base64, array и kvlist — JSON-текст массива/объекта значений
+    в таком же формате AttributeValue. Int64 не теряет точность в JS.
+  components/schemas/NodeDefinition: |-
+    ID вычисляется из идентифицирующих полей. enc — percent-encoding UTF-8: сохраняются только
+    A-Z a-z 0-9 - . _ ~, остальные байты %HH с верхним регистром hex. Пробел не заменяется на +.
+    service:enc(serviceName)
+    endpoint:enc(serviceName):enc(method):enc(route)
+    worker:enc(serviceName):enc(workerName)
+    postgres:enc(instance):enc(database)
+    kafka:enc(cluster):enc(topic)
+    Для endpoint/worker имя сервиса берётся из parentId. parentId обязательно указывает на service.
+    У service, postgres_database, kafka_topic parentId отсутствует. Идентичность регистрозависима;
+    label не участвует в сопоставлении. Неправильные ID и дубли идентичности отклоняются при PUT.
