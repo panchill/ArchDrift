@@ -46,6 +46,23 @@ beforeEach(() => {
 });
 
 describe("mock → HTTP client → React → Cytoscape", () => {
+  it("updates the zoom indicator and resets to 100% in the detailed view", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("img");
+    await user.click(
+      screen.getByRole("button", { name: "Endpoints и воркеры" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Сбросить масштаб к 100%" }),
+    );
+    expect(screen.getByLabelText("Текущий масштаб")).toHaveTextContent("100%");
+    await user.click(screen.getByRole("button", { name: "Увеличить" }));
+    expect(screen.getByLabelText("Текущий масштаб")).toHaveTextContent("125%");
+    await user.click(screen.getByRole("button", { name: "Уменьшить" }));
+    expect(screen.getByLabelText("Текущий масштаб")).toHaveTextContent("100%");
+    expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(8);
+  });
   it("loads responses and renders all resource kinds and summary", async () => {
     render(<App />);
     expect(screen.getByRole("status")).toHaveTextContent("Загрузка");

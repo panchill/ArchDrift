@@ -3,7 +3,8 @@ import type { NodeSingular } from "cytoscape";
 import fixture from "../public/mocks/analysis.json";
 import type { Analysis, Edge } from "../src/types";
 import { buildGraph, graphElements, edgeKey } from "../src/graph";
-import { createGraph, graphLayout } from "../src/GraphCanvas";
+import { createGraph, zoomAtCenter } from "../src/GraphCanvas";
+import { architecturePositions, CHILD_STEP } from "../src/layout";
 
 const analysis = fixture as Analysis;
 describe("graph transformation", () => {
@@ -147,13 +148,91 @@ describe("graph transformation", () => {
 
 describe("Cytoscape integration", () => {
   it.each(["services", "details"] as const)(
+    "does not overlap any peer nodes in %s view",
+    (view) => {
+      const cy = createGraph(undefined, buildGraph(analysis, view));
+      const nodes = cy.nodes().toArray();
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          if (
+            nodes[i].isChild() !== nodes[j].isChild() ||
+            nodes[i].data("parent") !== nodes[j].data("parent")
+          )
+            continue;
+          const a = nodes[i].boundingBox(),
+            b = nodes[j].boundingBox();
+          const overlap =
+            a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+          expect(overlap, `${nodes[i].id()} overlaps ${nodes[j].id()}`).toBe(
+            false,
+          );
+        }
+      }
+      const box = cy.elements().boundingBox();
+      expect(box.w).toBeLessThan(1500);
+      expect(box.h).toBeLessThan(650);
+      const laptopFit = Math.min((900 - 72) / box.w, (600 - 72) / box.h);
+      expect(laptopFit).toBeGreaterThan(0.55);
+      cy.destroy();
+    },
+  );
+  it("keeps endpoint rows aligned, stable and inside their parent services", () => {
+    const graph = buildGraph(analysis, "details");
+    const positions = architecturePositions(graph);
+    expect(
+      architecturePositions({
+        nodes: [...graph.nodes].reverse(),
+        edges: [...graph.edges].reverse(),
+      }),
+    ).toEqual(positions);
+    const cy = createGraph(undefined, graph);
+    cy.nodes(":parent").forEach((parent) => {
+      const children = parent
+        .children()
+        .sort((a, b) => a.position("y") - b.position("y"));
+      for (let i = 1; i < children.length; i++) {
+        expect(children[i].position("x")).toBe(children[0].position("x"));
+        expect(children[i].position("y") - children[i - 1].position("y")).toBe(
+          CHILD_STEP,
+        );
+      }
+    });
+    cy.destroy();
+  });
+  it("zooms around the viewport center and clamps to both limits", () => {
+    const cy = createGraph(undefined, buildGraph(analysis, "services"));
+    cy.pan({ x: 40, y: -20 });
+    const before = {
+      x: (cy.width() / 2 - cy.pan().x) / cy.zoom(),
+      y: (cy.height() / 2 - cy.pan().y) / cy.zoom(),
+    };
+    zoomAtCenter(cy, 1.25);
+    expect((cy.width() / 2 - cy.pan().x) / cy.zoom()).toBeCloseTo(before.x);
+    expect((cy.height() / 2 - cy.pan().y) / cy.zoom()).toBeCloseTo(before.y);
+    zoomAtCenter(cy, 999);
+    expect(cy.zoom()).toBe(cy.maxZoom());
+    zoomAtCenter(cy, 0);
+    expect(cy.zoom()).toBe(cy.minZoom());
+    cy.destroy();
+  });
+  it("handles cycles and empty search results without an unstable layout", () => {
+    expect(architecturePositions({ nodes: [], edges: [] }).size).toBe(0);
+    const graph = buildGraph(analysis, "services");
+    graph.edges.push({
+      ...graph.edges[0],
+      source: "service:payments",
+      target: "service:orders",
+      type: "http_call",
+    });
+    const positions = [...architecturePositions(graph).values()];
+    expect(
+      positions.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)),
+    ).toBe(true);
+  });
+  it.each(["services", "details"] as const)(
     "computes finite, separated node positions for the %s layout",
     (view) => {
       const cy = createGraph(undefined, buildGraph(analysis, view));
-      cy.layout({
-        ...graphLayout,
-        boundingBox: { x1: 0, y1: 0, w: 1100, h: 600 },
-      }).run();
       const positions = cy
         .nodes()
         .filter((n) => !n.isParent())

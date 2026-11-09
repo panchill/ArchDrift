@@ -191,152 +191,106 @@ export default function App() {
           <span /> МОК · CALM 1.2
         </span>
       </header>
-      <div className="workspace">
-        <aside className="sidebar">
-          <p className="eyebrow">Рабочее пространство</p>
-          <div className="nav-active">
-            ⌘ <span>Карта архитектуры</span>
-          </div>
-          <div className="sidebar-section">
-            <p className="eyebrow">Источники</p>
-            <div className="source">
-              <span className="source-icon">C</span>
-              <div>
-                CALM-декларация<small>Ожидаемая архитектура</small>
-              </div>
-            </div>
-            <div className="source">
-              <span className="source-icon">O</span>
-              <div>
-                OpenTelemetry<small>Синтетический снимок</small>
-              </div>
-            </div>
-          </div>
-          <div className="sidebar-section">
-            <p className="eyebrow">Обозначения</p>
-            {Object.entries(statusLabels).map(([key, label]) => (
-              <p className="legend-row" key={key}>
-                <span className={`status-dot ${key}`} />
-                {label}
-              </p>
-            ))}
-          </div>
-          <div className="sidebar-footer">
-            <span className="eyebrow">Локальный прототип</span>
-            <p>
-              Один магазин.
-              <br />
-              Все его зависимости.
-            </p>
-            <small>Без подключения к бэкенду</small>
-          </div>
-        </aside>
-        <main>
-          <div className="page-heading">
-            <div>
-              <div className="eyebrow">Обзор системы / Demo shop</div>
-              <h1>Карта архитектуры</h1>
-              <p>
-                Как сервисы связаны на самом деле — и где они расходятся с
-                декларацией.
-              </p>
-            </div>
-            <button
-              className="button"
-              onClick={() => {
-                setSelected(null);
-                setAttempt((a) => a + 1);
-              }}
-            >
-              ↻ Обновить мок
+      <main>
+        <div className="page-heading">
+          <h1>
+            Архитектура <span className="heading-divider">/</span>{" "}
+            <span>demo-shop</span>
+          </h1>
+          <button
+            className="button"
+            onClick={() => {
+              setSelected(null);
+              setAttempt((a) => a + 1);
+            }}
+          >
+            ↻ Обновить мок
+          </button>
+        </div>
+        {error ? (
+          <section className="error-state" role="alert">
+            <h2>Не удалось загрузить граф</h2>
+            <p>{error}</p>
+            <button className="button" onClick={() => setAttempt((a) => a + 1)}>
+              Повторить
             </button>
+          </section>
+        ) : !snapshot ? (
+          <div className="loading" role="status">
+            Загрузка архитектуры…
           </div>
-          {error ? (
-            <section className="error-state" role="alert">
-              <h2>Не удалось загрузить граф</h2>
-              <p>{error}</p>
-              <button
-                className="button"
-                onClick={() => setAttempt((a) => a + 1)}
-              >
-                Повторить
-              </button>
-            </section>
-          ) : !snapshot ? (
-            <div className="loading" role="status">
-              Загрузка архитектуры…
-            </div>
-          ) : (
-            <>
-              <section className="summary" aria-label="Сводка анализа">
-                <div>
-                  <span>Сервисы</span>
+        ) : (
+          <>
+            <section className="summary" aria-label="Сводка анализа">
+              <div className="summary-counts">
+                <span>
                   <strong>
                     {
                       snapshot.analysis.nodes.filter(
                         (n) => n.node.type === "service",
                       ).length
                     }
-                  </strong>
-                  <small>в графе архитектуры</small>
+                  </strong>{" "}
+                  сервисов
+                </span>
+                <span>
+                  <strong>{snapshot.analysis.edges.length}</strong> связей
+                </span>
+                <span className={violations ? "summary-warning" : ""}>
+                  <strong>{violations}</strong> нарушения
+                </span>
+              </div>
+              <div className="snapshot-time">
+                <span>
+                  {time.format(new Date(snapshot.analysis.from))} —{" "}
+                  {time.format(new Date(snapshot.analysis.to))} UTC
+                </span>
+                <span>
+                  {startDate}
+                  {startDate !== endDate ? ` — ${endDate}` : ""}
+                </span>
+                <span className="snapshot-label">Фиксированный снимок</span>
+              </div>
+            </section>
+            <section className="graph-panel">
+              <div className="toolbar">
+                <div className="view-toggle" aria-label="Детализация графа">
+                  <button
+                    aria-pressed={view === "services"}
+                    onClick={() => {
+                      setView("services");
+                      setSelected(null);
+                    }}
+                  >
+                    Сервисы
+                  </button>
+                  <button
+                    aria-pressed={view === "details"}
+                    onClick={() => {
+                      setView("details");
+                      setSelected(null);
+                    }}
+                  >
+                    Endpoints и воркеры
+                  </button>
                 </div>
-                <div>
-                  <span>Связи</span>
-                  <strong>{snapshot.analysis.edges.length}</strong>
-                  <small>до группировки по сервисам</small>
-                </div>
-                <div className="summary-warning">
-                  <span>Нарушения</span>
-                  <strong>{violations.toString().padStart(2, "0")}</strong>
-                  <small>требуют внимания</small>
-                </div>
-                <div>
-                  <span>Интервал снимка · UTC</span>
-                  <strong className="time-range">
-                    {time.format(new Date(snapshot.analysis.from))} —{" "}
-                    {time.format(new Date(snapshot.analysis.to))}
-                  </strong>
-                  <small>
-                    {startDate}
-                    {startDate !== endDate ? ` — ${endDate}` : ""} ·
-                    фиксированный мок
-                  </small>
-                </div>
-              </section>
-              <section className="graph-panel">
-                <div className="toolbar">
-                  <div className="view-toggle" aria-label="Детализация графа">
-                    <button
-                      aria-pressed={view === "services"}
-                      onClick={() => {
-                        setView("services");
-                        setSelected(null);
-                      }}
-                    >
-                      Сервисы
-                    </button>
-                    <button
-                      aria-pressed={view === "details"}
-                      onClick={() => {
-                        setView("details");
-                        setSelected(null);
-                      }}
-                    >
-                      Endpoints и воркеры
-                    </button>
-                  </div>
+                <div className="graph-filters">
                   <input
                     aria-label="Поиск узла"
-                    placeholder="Поиск сервиса, endpoint, топика…"
+                    placeholder="Найти сервис, endpoint, топик"
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setSelected(null);
+                    }}
                   />
                   <select
                     aria-label="Статус связи"
                     value={status}
-                    onChange={(e) =>
-                      setStatus(e.target.value as EdgeStatus | "all")
-                    }
+                    onChange={(e) => {
+                      setStatus(e.target.value as EdgeStatus | "all");
+                      setSelected(null);
+                    }}
                   >
                     <option value="all">Все связи</option>
                     {Object.entries(statusLabels).map(([key, label]) => (
@@ -346,36 +300,46 @@ export default function App() {
                     ))}
                   </select>
                 </div>
-                <div className="graph-layout">
-                  <div className="graph-area">
-                    <GraphCanvas
-                      graph={graph}
-                      selected={selected}
-                      onSelect={onSelect}
-                    />
-                    <div className="graph-caption">
-                      <span>
-                        {graph.nodes.length} узлов · {graph.edges.length} связей
-                        в представлении
-                      </span>
-                      <span>Архитектура v{snapshot.architecture.version}</span>
-                    </div>
+              </div>
+              <div className="graph-layout">
+                <div className="graph-area">
+                  <GraphCanvas
+                    graph={graph}
+                    selected={selected}
+                    onSelect={onSelect}
+                  />
+                  <div className="graph-caption">
+                    <span>
+                      {graph.nodes.length} узлов · {graph.edges.length} связей в
+                      представлении
+                    </span>
+                    <span>Архитектура v{snapshot.architecture.version}</span>
                   </div>
-                  <aside className="inspector" aria-label="Детали графа">
-                    {edge ? (
-                      <EdgeDetails edge={edge} names={names} />
-                    ) : node ? (
-                      <NodeDetails item={node} />
-                    ) : (
-                      <>
-                        <span className="eyebrow">Требует внимания</span>
-                        <h2>
-                          Вне декларации{" "}
-                          <span className="count">{violations}</span>
-                        </h2>
-                        <p className="muted">
-                          Наблюдаемые взаимодействия, которых нет в CALM-модели.
-                        </p>
+                  <div className="graph-legend" aria-label="Легенда графа">
+                    {Object.entries(statusLabels).map(([key, label]) => (
+                      <span key={key}>
+                        <i className={`legend-line ${key}`} />
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <aside className="inspector" aria-label="Детали графа">
+                  {edge ? (
+                    <EdgeDetails edge={edge} names={names} />
+                  ) : node ? (
+                    <NodeDetails item={node} />
+                  ) : (
+                    <>
+                      <div className="panel-heading">
+                        <h2>Вне декларации</h2>
+                        <span className="count">{violations}</span>
+                      </div>
+                      <p className="muted">
+                        Выберите связь, чтобы посмотреть операции и причину
+                        отклонения.
+                      </p>
+                      <div className="violation-list">
                         {snapshot.analysis.violations.map((v, i) => (
                           <button
                             className="violation-card"
@@ -394,112 +358,133 @@ export default function App() {
                               );
                             }}
                           >
-                            <span className="status-dot unexpected" />
+                            <span className="violation-type">
+                              {v.dbOperation ?? v.edgeType}
+                              <span aria-hidden="true">↗</span>
+                            </span>
                             <strong>
-                              {names.get(v.source)} → {names.get(v.target)}
+                              {names.get(v.source)}{" "}
+                              <span className="arrow">→</span>{" "}
+                              {names.get(v.target)}
                             </strong>
                             <small>{v.message}</small>
-                            <span className="violation-action">
-                              Посмотреть связь ↗
-                            </span>
                           </button>
                         ))}
-                        {snapshot.analysis.edges.length === 0 && (
+                      </div>
+                      {snapshot.analysis.edges.length === 0 && (
+                        <p className="notice">
+                          В этом интервале нет наблюдаемых связей.
+                        </p>
+                      )}
+                      {snapshot.analysis.edges.length > 0 &&
+                        violations === 0 && (
                           <p className="notice">
-                            В этом интервале нет наблюдаемых связей.
+                            Нарушений в наблюдаемых связях нет.
                           </p>
                         )}
-                        {snapshot.analysis.edges.length > 0 &&
-                          violations === 0 && (
-                            <p className="notice">
-                              Нарушений в наблюдаемых связях нет.
-                            </p>
-                          )}
-                        {hasIncompleteTelemetry && (
-                          <div className="notice">
-                            <strong>Телеметрия неполная</strong>
-                            <p>
-                              HTTP-вызовы без определённого назначения:{" "}
-                              {
-                                snapshot.analysis.diagnostics
-                                  .unmatchedHttpClientSpans
-                              }
-                              . Ресурсы без идентичности:{" "}
-                              {
-                                snapshot.analysis.diagnostics
-                                  .unresolvedResourceSpans
-                              }
-                              . Операции без детализации:{" "}
-                              {
-                                snapshot.analysis.diagnostics
-                                  .serviceLevelOperations
-                              }
-                              . Отсутствие нарушения не доказывает соответствие.
-                            </p>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {(edge || node) && (
-                      <button
-                        className="back-button"
-                        onClick={() => setSelected(null)}
-                      >
-                        ← К списку нарушений
-                      </button>
-                    )}
-                  </aside>
-                </div>
-              </section>
-              <details className="accessible-list">
-                <summary>Список связей и узлов — выбор с клавиатуры</summary>
-                <div className="list-grid">
-                  <div>
-                    <h3>Связи</h3>
-                    {graph.edges.map((e) => (
-                      <button key={e.id} onClick={() => setSelected(e.id)}>
-                        <span className={`status-dot ${e.status}`} />
-                        {names.get(e.source)} → {names.get(e.target)} ·{" "}
-                        {e.dbOperation ?? e.type}
-                        <small>{statusLabels[e.status]}</small>
-                      </button>
-                    ))}
-                  </div>
-                  <div>
-                    <h3>Узлы</h3>
-                    {graph.nodes.map((n) => (
-                      <button
-                        key={n.node.id}
-                        onClick={() => setSelected(n.node.id)}
-                      >
-                        {n.node.label}
-                        <small>{nodeLabels[n.node.type]}</small>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </details>
-              <footer className="page-footer">
-                <span>Демонстрационные данные · HTTP, PostgreSQL и Kafka</span>
+                      {hasIncompleteTelemetry && (
+                        <details className="diagnostics">
+                          <summary>Телеметрия неполная</summary>
+                          <p>
+                            HTTP-вызовы без определённого назначения:{" "}
+                            {
+                              snapshot.analysis.diagnostics
+                                .unmatchedHttpClientSpans
+                            }
+                            . Ресурсы без идентичности:{" "}
+                            {
+                              snapshot.analysis.diagnostics
+                                .unresolvedResourceSpans
+                            }
+                            . Операции без детализации:{" "}
+                            {
+                              snapshot.analysis.diagnostics
+                                .serviceLevelOperations
+                            }
+                            . Отсутствие нарушения не доказывает соответствие.
+                          </p>
+                        </details>
+                      )}
+                      <div className="inspector-help">
+                        <h4>На схеме</h4>
+                        <p>
+                          <span className="node-key service-key" />
+                          Сервис и его endpoints
+                        </p>
+                        <p>
+                          <span className="node-key database-key" />
+                          PostgreSQL
+                        </p>
+                        <p>
+                          <span className="node-key topic-key" />
+                          Kafka-топик
+                        </p>
+                        <small>
+                          Пунктирная рамка — воркер или неизвестный узел.
+                          Неактивные узлы не наблюдались в этом интервале.
+                        </small>
+                      </div>
+                    </>
+                  )}
+                  {(edge || node) && (
+                    <button
+                      className="back-button"
+                      onClick={() => setSelected(null)}
+                    >
+                      ← К списку нарушений
+                    </button>
+                  )}
+                </aside>
+              </div>
+            </section>
+            <details className="accessible-list">
+              <summary>Список связей и узлов — выбор с клавиатуры</summary>
+              <div className="list-grid">
                 <div>
-                  <a
-                    href={`${import.meta.env.BASE_URL}mocks/architecture.json`}
-                    download
-                  >
-                    CALM JSON ↓
-                  </a>
-                  <a
-                    href={`${import.meta.env.BASE_URL}mocks/analysis.json`}
-                    download
-                  >
-                    Анализ JSON ↓
-                  </a>
+                  <h3>Связи</h3>
+                  {graph.edges.map((e) => (
+                    <button key={e.id} onClick={() => setSelected(e.id)}>
+                      <span className={`status-dot ${e.status}`} />
+                      {names.get(e.source)} → {names.get(e.target)} ·{" "}
+                      {e.dbOperation ?? e.type}
+                      <small>{statusLabels[e.status]}</small>
+                    </button>
+                  ))}
                 </div>
-              </footer>
-            </>
-          )}
-        </main>
-      </div>
+                <div>
+                  <h3>Узлы</h3>
+                  {graph.nodes.map((n) => (
+                    <button
+                      key={n.node.id}
+                      onClick={() => setSelected(n.node.id)}
+                    >
+                      {n.node.label}
+                      <small>{nodeLabels[n.node.type]}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </details>
+            <footer className="page-footer">
+              <span>CALM 1.2 / OpenTelemetry · Демонстрационные данные</span>
+              <div>
+                <a
+                  href={`${import.meta.env.BASE_URL}mocks/architecture.json`}
+                  download
+                >
+                  CALM JSON ↓
+                </a>
+                <a
+                  href={`${import.meta.env.BASE_URL}mocks/analysis.json`}
+                  download
+                >
+                  Анализ JSON ↓
+                </a>
+              </div>
+            </footer>
+          </>
+        )}
+      </main>
     </div>
   );
 }
