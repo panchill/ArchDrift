@@ -151,7 +151,7 @@ ArchDrift видит только то, что есть в трейсах. По�
 | Воркер | Спан запуска задачи с `archdrift.worker.name` |
 | PostgreSQL | CLIENT с `db.system.name=postgresql`, `db.namespace=<база>`, `archdrift.postgres.instance=<инстанс>`; по возможности `db.operation.name` |
 | Kafka | `messaging.system=kafka`, `messaging.destination.name=<топик>`, `archdrift.kafka.cluster=<кластер>`, `messaging.operation.type` = `send` / `process` |
-
+ 
 - Атрибуты `archdrift.*` — соглашение проекта, а не стандарт OpenTelemetry.
 - Логические имена `instance` и `cluster` одинаковы во всех сервисах; IP, адреса и порты в ID не используются.
 - Если не удалось определить endpoint или воркер, связь строится на уровне сервиса, а случай учитывается в `diagnostics`.
