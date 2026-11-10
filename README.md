@@ -187,10 +187,10 @@ sequenceDiagram
 }
 ```
 
-Загрузка модели:
+Загрузка модели с хоста (порт 8081: на 8080 отвечает магазин OpenTelemetry Demo; внутри compose API слушает 8080):
 
 ```bash
-curl -X PUT localhost:8080/api/v1/architecture \
+curl -X PUT localhost:8081/api/v1/architecture \
   -H 'Content-Type: application/json' \
   -d @model.json
 ```
@@ -233,30 +233,35 @@ ArchDrift видит только то, что есть в трейсах. По�
 
 ## Быстрый старт
 
-Нужны Docker и Git.
+Нужны Docker (не меньше 6 ГБ памяти) и Git. Порт 8080 на хосте занимает магазин Demo, поэтому API ArchDrift снаружи на 8081.
 
 ```bash
 git clone https://github.com/panchill/ArchDrift.git
 cd ArchDrift
-cp .env.example .env
 make up
 ```
 
+`make up` клонирует [OpenTelemetry Demo](https://github.com/open-telemetry/opentelemetry-demo) релиза 3.1.0 в `opentelemetry-demo/` (каталог в `.gitignore`) и поднимает Demo вместе с archdrift. Уже существующую копию команда не перезаписывает. Другой тег: `make up DEMO_REF=3.1.0`.
+
 | Что | Адрес |
 | --- | --- |
+| Магазин Astronomy Shop | http://localhost:8080 |
+| Jaeger | http://localhost:8080/jaeger/ui |
+| Grafana | http://localhost:8080/grafana/ |
+| ArchDrift API | http://localhost:8081 |
 | ArchDrift UI | http://localhost:5173 |
-| ArchDrift API | http://localhost:8080 |
-| Jaeger | http://localhost:16686 |
+
+Collector Demo дополнительно шлёт трейсы OTLP/HTTP protobuf без сжатия на `http://archdrift:8080/v1/traces`. На хосте тот же приём доступен как `http://localhost:8081/v1/traces`.
 
 Остальные команды: `make down` — остановить, `make reset` — остановить и стереть данные, `make logs` — логи.
 
+Атрибуты `archdrift.*` в спаны Demo добавляют процессоры Collector. Пока их нет, трейсы уже доходят до archdrift, но часть рёбер PostgreSQL и Kafka может не собраться.
+
 ## Демо-сценарий
 
-Демо-магазин: `gateway` → `orders` → `orders_db` и Kafka `order.created` → `payments` (`payments_db`) и `notifications`.
+Наблюдаемая система — OpenTelemetry Demo, Astronomy Shop. Своих сервисов нет, нагрузку даёт load-generator Demo.
 
-1. `make up` — поднимается стенд, генератор нагрузки создаёт заказы.
-2. Открыть UI — все связи зелёные.
-3. Включить «плохой» вызов (`make bad-on` или кнопка в UI): сервис `payments` начинает читать `orders_db`.
-4. Через несколько секунд связь `payments → orders_db` становится красной (`unexpected`), в списке нарушений появляется запись с примером трейса.
-5. Выключить (`make bad-off`) — связь пропадает из анализа, когда выходит за окно времени.
+1. `make up` — поднимается стенд, генератор создаёт заказы, трейсы приходят в archdrift.
+2. UI на http://localhost:5173 пока рисует согласованные моки. Живой граф подключает отдельная задача.
+3. Сценарий защиты «устаревшая модель» (`make model` / `make model-stale`) появится вместе с загрузкой CALM: связь checkout → email должна стать красной, затем снова зелёной.
 

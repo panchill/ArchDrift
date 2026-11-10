@@ -1,0 +1,58 @@
+# Подключается последним файлом к compose OpenTelemetry Demo.
+# Сервисы попадают в его сеть, Collector видит http://archdrift:8080.
+# ARCHDRIFT_ROOT задаёт Makefile: контексты сборки лежат в этом репозитории.
+
+services:
+  archdrift-postgres:
+    image: postgres:16-alpine
+    container_name: archdrift-postgres
+    environment:
+      POSTGRES_USER: archdrift
+      POSTGRES_PASSWORD: archdrift
+      POSTGRES_DB: archdrift
+    volumes:
+      - archdrift-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U archdrift -d archdrift"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  archdrift:
+    build:
+      context: ${ARCHDRIFT_ROOT}/backend
+    image: archdrift:local
+    container_name: archdrift
+    environment:
+      DATABASE_URL: postgres://archdrift:archdrift@archdrift-postgres:5432/archdrift?sslmode=disable
+      ADDR: ":8080"
+    ports:
+      - "8081:8080"
+    depends_on:
+      archdrift-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  archdrift-ui:
+    build:
+      context: ${ARCHDRIFT_ROOT}/frontend
+    image: archdrift-ui:local
+    container_name: archdrift-ui
+    ports:
+      - "5173:5173"
+    restart: unless-stopped
+
+  otel-collector:
+    depends_on:
+      archdrift:
+        condition: service_healthy
+
+volumes:
+  archdrift-pg:
