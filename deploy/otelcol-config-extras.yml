@@ -1,0 +1,10 @@
+exporters:
+  otlp_http/archdrift:
+    endpoint: http://archdrift:8080
+    compression: none
+    encoding: proto
+
+service:
+  pipelines:
+    traces:
+      exporters: [debug, otlp_grpc/jaeger, span_metrics, otlp_http/archdrift]
