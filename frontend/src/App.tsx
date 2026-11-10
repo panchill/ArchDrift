@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadSnapshot } from "./api";
-import { GraphCanvas, type Theme } from "./GraphCanvas";
+import { GraphCanvas, type Direction, type Theme } from "./GraphCanvas";
 import {
   buildGraph,
   edgeKey,
@@ -172,7 +172,17 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>("dark");
   const [panelOpen, setPanelOpen] = useState(false);
+  const [direction, setDirection] = useState<Direction>("out");
+  // Read through a ref: a new onSelect would recreate the Cytoscape graph.
+  const current = useRef({ selected, direction, details: false });
   const onSelect = useCallback((id: string | null) => {
+    const c = current.current;
+    // Details view: clicking the same node again flips outgoing → incoming → off.
+    if (id && id === c.selected && c.details) {
+      if (c.direction === "out") return setDirection("in");
+      id = null;
+    }
+    setDirection("out");
     setSelected(id);
     if (id) setPanelOpen(true);
   }, []);
@@ -202,16 +212,43 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+  // Details view: services are collapsed; the selection opens the ones to look into.
+  // A string, so an unchanged set does not rebuild the graph.
+  const expanded = useMemo(() => {
+    if (!snapshot || view !== "details" || !selected) return "";
+    const byId = new Map(snapshot.nodes.map((n) => [n.node.id, n.node]));
+    const owner = (id: string) => {
+      const node = byId.get(id);
+      return node && "parentId" in node ? node.parentId : id;
+    };
+    const open = new Set<string>();
+    const raw = snapshot.edges.find((e) => edgeKey(e) === selected);
+    if (raw)
+      open.add(owner(raw.source)).add(raw.source).add(owner(raw.target)).add(raw.target);
+    else if (byId.has(selected)) {
+      const inside = (id: string) => id === selected || owner(id) === selected;
+      if (owner(selected) !== selected) open.add(owner(selected)).add(selected);
+      // Open only the endpoints the calls use: outgoing — in the callees,
+      // incoming — in the selected service itself.
+      for (const e of snapshot.edges) {
+        const [from, to] = direction === "out" ? [e.source, e.target] : [e.target, e.source];
+        if (!inside(from) || owner(to) === owner(selected)) continue;
+        const end = direction === "out" ? to : from;
+        open.add(owner(end)).add(end);
+      }
+    }
+    return [...open].sort().join("\n");
+  }, [snapshot, view, selected, direction]);
   const graph = useMemo(() => {
     if (!snapshot) return { nodes: [], edges: [] };
-    const full = buildGraph(snapshot, view, status);
+    const full = buildGraph(snapshot, view, status, "", new Set(expanded.split("\n")));
     if (!onlyDrift) return full;
     const edges = full.edges.filter((e) => e.status !== "declared");
     const keep = new Set(edges.flatMap((e) => [e.source, e.target]));
     for (const { node } of full.nodes)
       if (keep.has(node.id) && "parentId" in node) keep.add(node.parentId);
     return { nodes: full.nodes.filter((n) => keep.has(n.node.id)), edges };
-  }, [snapshot, view, status, onlyDrift]);
+  }, [snapshot, view, status, onlyDrift, expanded]);
   const meta = useMemo(
     () => (snapshot ? nodeMeta(snapshot) : undefined),
     [snapshot],
@@ -229,6 +266,7 @@ export default function App() {
   );
   const edge = graph.edges.find((e) => e.id === selected);
   const node = graph.nodes.find((n) => n.node.id === selected);
+  current.current = { selected, direction, details: view === "details" && !!node };
   const edgesByKey = new Map(snapshot?.edges.map((e) => [edgeKey(e), e]));
   const unclear = snapshot?.edges.filter((e) => e.status === "indeterminate") ?? [];
   const violations =
@@ -302,6 +340,8 @@ export default function App() {
               onSelect={onSelect}
               meta={meta}
               theme={theme}
+              direction={view === "details" ? direction : undefined}
+              view={view}
             />
             <div className="float toolbar">
               <div className="segmented" aria-label="Детализация графа">
@@ -351,6 +391,24 @@ export default function App() {
                 <i />
                 Только расхождения
               </label>
+              {view === "details" && node && (
+                <div className="segmented" aria-label="Направление вызовов">
+                  <button
+                    aria-pressed={direction === "out"}
+                    title="Куда ходит сервис (повторный клик по нему — переключить)"
+                    onClick={() => setDirection("out")}
+                  >
+                    Исходящие
+                  </button>
+                  <button
+                    aria-pressed={direction === "in"}
+                    title="Кто ходит к сервису"
+                    onClick={() => setDirection("in")}
+                  >
+                    Входящие
+                  </button>
+                </div>
+              )}
             </div>
             <div className="float counters" aria-label="Сводка анализа">
               <button

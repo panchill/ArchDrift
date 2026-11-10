@@ -49,7 +49,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     await user.click(
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     );
-    await screen.findByRole("img", { name: /87 узлов/ });
+    await screen.findByRole("img", { name: /25 узлов/ });
     await user.click(
       screen.getByRole("button", { name: "Сбросить масштаб к 100%" }),
     );
@@ -58,7 +58,6 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     expect(screen.getByLabelText("Текущий масштаб")).toHaveTextContent("125%");
     await user.click(screen.getByRole("button", { name: "Уменьшить" }));
     expect(screen.getByLabelText("Текущий масштаб")).toHaveTextContent("100%");
-    expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(62);
   });
   it("loads responses and renders all resource kinds and summary", async () => {
     render(<App />);
@@ -70,7 +69,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     expect(cy.nodes(".kafka_topic")).toHaveLength(1);
     expect(cy.nodes(".service")).toHaveLength(23);
   });
-  it("switches to endpoints, keeps compound membership and destroys replaced graph", async () => {
+  it("collapses services in the detailed view and destroys the replaced graph", async () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByRole("img");
@@ -78,10 +77,54 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     await user.click(
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     );
-    await screen.findByRole("img", { name: /87 узлов, 64 связей/ });
-    expect(previous.destroyed()).toBe(true);
-    expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(62);
-    expect(cores.at(-1)!.nodes(".worker")).toHaveLength(0);
+    await waitFor(() => expect(previous.destroyed()).toBe(true));
+    await screen.findByRole("img", { name: /25 узлов/ });
+    expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(0);
+  });
+  it("expands callees, then the service itself, then collapses on repeated clicks", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("img");
+    await user.click(
+      screen.getByRole("button", { name: "Endpoints и воркеры" }),
+    );
+    await screen.findByRole("img", { name: /25 узлов/ });
+    const tap = async () => {
+      const before = cores.at(-1)!;
+      act(() => void before.getElementById("service:checkout").emit("tap"));
+      await waitFor(() => expect(before.destroyed()).toBe(true));
+      await screen.findByRole("img");
+      return cores.at(-1)!;
+    };
+    // Outgoing: callees are open, checkout stays a card.
+    let cy = await tap();
+    expect(cy.getElementById("service:checkout").isParent()).toBe(false);
+    expect(cy.getElementById("service:email").isParent()).toBe(true);
+    const out = cy.edges(".shown");
+    expect(out.length).toBeGreaterThan(0);
+    out.forEach((e) => expect(e.source().id()).toBe("service:checkout"));
+    expect(out.targets().map((n) => n.id())).toContain(
+      cy.getElementById("service:email").children()[0].id(),
+    );
+    expect(screen.getByRole("button", { name: "Исходящие" })).toHaveAttribute("aria-pressed", "true");
+    // Only endpoints checkout actually calls are shown.
+    const called = new Set(out.targets().map((n) => n.id()));
+    cy.nodes(".endpoint").forEach((n) => expect(called.has(n.id())).toBe(true));
+    // Incoming: checkout is open, callers stay cards.
+    act(() => void cy.getElementById("service:checkout").emit("tap"));
+    await screen.findByRole("button", { name: "Входящие", pressed: true });
+    await waitFor(() =>
+      expect(cores.at(-1)!.getElementById("service:checkout").isParent()).toBe(true),
+    );
+    cy = cores.at(-1)!;
+    expect(cy.getElementById("service:email").isParent()).toBe(false);
+    const incoming = cy.edges(".shown");
+    expect(incoming.length).toBeGreaterThan(0);
+    incoming.forEach((e) => expect(e.target().data("parent")).toBe("service:checkout"));
+    // Third click: everything collapsed again.
+    act(() => void cy.getElementById("service:checkout").emit("tap"));
+    await waitFor(() => expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(0));
+    expect(screen.queryByRole("button", { name: "Исходящие" })).toBeNull();
   });
   it("filters unexpected calls", async () => {
     const user = userEvent.setup();
