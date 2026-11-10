@@ -4,12 +4,14 @@ package architecture
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -49,16 +51,23 @@ type parser struct {
 	identities map[string]bool
 }
 
-func Parse(raw []byte) (*Model, []Detail) {
+func (v *Validator) Parse(raw []byte) (*Model, error) {
 	if !utf8.Valid(raw) {
-		return nil, []Detail{{"/", "expected UTF-8 JSON"}}
+		return nil, &ValidationError{Details: []Detail{{Field: "/", Message: "expected UTF-8 JSON"}}}
 	}
-	v, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
+	document, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
 	if err != nil {
-		return nil, []Detail{{"/", "expected one valid JSON document"}}
+		return nil, &ValidationError{Details: []Detail{{Field: "/", Message: "expected one valid JSON document"}}}
 	}
-	doc := object(v)
-	p := &parser{nodes: map[string]Node{}, interfaces: map[string]map[string]Node{}, owners: map[string]string{}, identities: map[string]bool{}}
+	doc := object(document)
+	p := &parser{
+		model:      Model{Nodes: []Node{}, Relationships: []Relationship{}},
+		details:    []Detail{},
+		nodes:      map[string]Node{},
+		interfaces: map[string]map[string]Node{},
+		owners:     map[string]string{},
+		identities: map[string]bool{},
+	}
 	if text(doc["$schema"]) != schemaURL {
 		p.fail("/$schema", "expected CALM 1.2 schema URL")
 	}
@@ -70,7 +79,8 @@ func Parse(raw []byte) (*Model, []Detail) {
 		p.model.Version = version
 	}
 	nodes, ok := doc["nodes"].([]any)
-	if !ok || len(nodes) == 0 || len(nodes) > 1000 {
+	validNodeCount := len(nodes) > 0 && len(nodes) <= 1000
+	if !ok || !validNodeCount {
 		p.fail("/nodes", "expected 1 to 1000 nodes")
 	}
 	rels, ok := doc["relationships"].([]any)
@@ -79,10 +89,13 @@ func Parse(raw []byte) (*Model, []Detail) {
 	}
 	// Do not normalize unbounded collections after a size error.
 	if len(p.details) != 0 {
-		return nil, p.details
+		return nil, &ValidationError{Details: p.details}
 	}
-	if err := calmSchema.Validate(v); err != nil {
-		return nil, schemaDetails(err.(*jsonschema.ValidationError))
+	if err := v.schema.Validate(document); err != nil {
+		if validation, ok := errors.AsType[*jsonschema.ValidationError](err); ok {
+			return nil, &ValidationError{Details: schemaDetails(validation)}
+		}
+		return nil, fmt.Errorf("validate CALM schema: %w", err)
 	}
 	for i, v := range nodes {
 		p.addNode(object(v), fmt.Sprintf("/nodes/%d", i))
@@ -113,10 +126,10 @@ func Parse(raw []byte) (*Model, []Detail) {
 		p.addRelationship(object(v), fmt.Sprintf("/relationships/%d", i))
 	}
 	if len(p.details) != 0 {
-		return nil, p.details
+		return nil, &ValidationError{Details: p.details}
 	}
-	sort.Slice(p.model.Nodes, func(i, j int) bool { return p.model.Nodes[i].ID < p.model.Nodes[j].ID })
-	sort.Slice(p.model.Relationships, func(i, j int) bool { return p.model.Relationships[i].ID < p.model.Relationships[j].ID })
+	slices.SortFunc(p.model.Nodes, func(a, b Node) int { return cmp.Compare(a.ID, b.ID) })
+	slices.SortFunc(p.model.Relationships, func(a, b Relationship) int { return cmp.Compare(a.ID, b.ID) })
 	return &p.model, nil
 }
 
@@ -124,7 +137,11 @@ func revision(v any) (int64, bool) {
 	n, ok := v.(json.Number)
 	f, err := n.Float64()
 	// Reject huge exponents before exact arithmetic can allocate huge integers.
-	if !ok || err != nil || f < 0 || f > float64(math.MaxInt64) || math.Trunc(f) != f {
+	if !ok || err != nil {
+		return 0, false
+	}
+	inRange := f >= 0 && f <= float64(math.MaxInt64)
+	if !inRange || math.Trunc(f) != f {
 		return 0, false
 	}
 	if f == 0 {
@@ -132,7 +149,10 @@ func revision(v any) (int64, bool) {
 		return 0, strings.Trim(coefficient, "-0.") == ""
 	}
 	r, valid := new(big.Rat).SetString(string(n))
-	if !valid || !r.IsInt() || !r.Num().IsInt64() {
+	if !valid {
+		return 0, false
+	}
+	if !r.IsInt() || !r.Num().IsInt64() {
 		return 0, false
 	}
 	return r.Num().Int64(), true
@@ -142,7 +162,7 @@ func object(v any) map[string]any { m, _ := v.(map[string]any); return m }
 func text(v any) string           { s, _ := v.(string); return s }
 func (p *parser) fail(field, message string) {
 	if len(p.details) < 100 {
-		p.details = append(p.details, Detail{field, message})
+		p.details = append(p.details, Detail{Field: field, Message: message})
 	}
 }
 
@@ -176,13 +196,7 @@ func (p *parser) binding(m map[string]any, path string, required bool, fields ..
 		return nil
 	}
 	for key := range b {
-		allowed := false
-		for _, field := range fields {
-			if key == field {
-				allowed = true
-			}
-		}
-		if !allowed {
+		if !slices.Contains(fields, key) {
 			p.fail(path+"/metadata/archdrift/"+key, "unknown binding field")
 		}
 	}
@@ -191,7 +205,9 @@ func (p *parser) binding(m map[string]any, path string, required bool, fields ..
 
 func (p *parser) value(b map[string]any, key, path string, max int) string {
 	s, ok := b[key].(string)
-	if !ok || utf8.RuneCountInString(s) < 1 || utf8.RuneCountInString(s) > max {
+	length := utf8.RuneCountInString(s)
+	validLength := length >= 1 && length <= max
+	if !ok || !validLength {
 		p.fail(path+"/metadata/archdrift/"+key, fmt.Sprintf("expected a string of 1 to %d characters", max))
 	}
 	return s
@@ -213,7 +229,7 @@ func (p *parser) addNode(m map[string]any, path string) {
 	if len(label) > 255 {
 		n.Label = string(label[:255])
 	}
-	var fields []string
+	fields := []string{}
 	switch kind {
 	case "service":
 		fields = []string{"serviceName"}
@@ -287,7 +303,18 @@ func (p *parser) addNode(m map[string]any, path string) {
 		if len(label) > 255 {
 			label = label[:255]
 		}
-		endpoint := Node{Node: graph.Node{ID: nodeid.Endpoint(n.ServiceName, method, route), Type: "endpoint", ParentID: n.ID, Method: method, Route: route, Label: string(label)}, CalmNodeID: id, CalmInterfaceID: iid}
+		endpoint := Node{
+			Node: graph.Node{
+				ID:       nodeid.Endpoint(n.ServiceName, method, route),
+				Type:     "endpoint",
+				ParentID: n.ID,
+				Method:   method,
+				Route:    route,
+				Label:    string(label),
+			},
+			CalmNodeID:      id,
+			CalmInterfaceID: iid,
+		}
 		p.interfaces[id][iid] = endpoint
 		p.addIdentity(endpoint, ip)
 	}

@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/panchill/ArchDrift/backend/internal/architecture"
 	"github.com/panchill/ArchDrift/backend/internal/store"
 )
 
@@ -24,6 +23,5 @@ func NewRouter(db *store.Store) *gin.Engine {
 	router.GET("/healthz", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 	router.HEAD("/healthz", func(c *gin.Context) { c.Header("Content-Type", "application/json"); c.Status(http.StatusOK) })
 	router.POST("/v1/traces", Handler(db))
-	architecture.Register(router, db)
 	return router
 }

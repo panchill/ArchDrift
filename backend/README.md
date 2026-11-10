@@ -76,6 +76,16 @@ failure cleanup, concurrent architecture updates, JSON preservation and the
 architecture HTTP scenario (including rejected updates). CI supplies PostgreSQL 18 and runs these tests.
 Without that variable integration tests explicitly skip.
 
+## Architecture code boundaries
+
+- `internal/architecture`: CALM validation, canonical model, snapshots and domain errors;
+  no HTTP, PostgreSQL or Fx imports.
+- `internal/usecase`: read/replace operations and the repository interface they consume.
+- `internal/ingest`: named HTTP handler methods, request limits and mapping domain errors to API responses.
+- `internal/store`: PostgreSQL repository, atomic revision checks and translation of database errors.
+- `internal/app`: Fx constructors and route registration. The CALM validator is created explicitly;
+  schema compilation errors fail application construction without package initialization panics.
+
 ## Railway
 
 The existing service uses root directory `backend`, `Dockerfile`, `/healthz` and

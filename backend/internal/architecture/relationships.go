@@ -64,7 +64,7 @@ func (p *parser) selector(v any, path string) []Node {
 		return nil
 	}
 	seen := map[string]bool{}
-	var result []Node
+	result := make([]Node, 0, len(interfaces))
 	for _, v := range interfaces {
 		iid := text(v)
 		n, exists := p.interfaces[id][iid]
@@ -87,8 +87,12 @@ func (p *parser) addRelationship(m map[string]any, path string) {
 	}
 	b := p.binding(m, path, false, fields...)
 	typ := text(b["type"])
-	if v, exists := b["type"]; exists && (text(v) == "" || (typ != "http_call" && typ != "db_query" && typ != "publish" && typ != "consume")) {
-		p.fail(path+"/metadata/archdrift/type", "unsupported operation type")
+	if _, exists := b["type"]; exists {
+		switch typ {
+		case "http_call", "db_query", "publish", "consume":
+		default:
+			p.fail(path+"/metadata/archdrift/type", "unsupported operation type")
+		}
 	}
 	protocolType := ""
 	if v, exists := m["protocol"]; exists {
@@ -109,7 +113,12 @@ func (p *parser) addRelationship(m map[string]any, path string) {
 	p.binding(c, path+"/relationship-type/connects", false)
 	sources := p.selector(c["source"], path+"/relationship-type/connects/source")
 	targets := p.selector(c["destination"], path+"/relationship-type/connects/destination")
-	r := Relationship{ID: text(m["unique-id"])}
+	r := Relationship{
+		ID:      text(m["unique-id"]),
+		Sources: make([]string, 0, len(sources)),
+		Targets: make([]string, 0, len(targets)),
+		Types:   []string{},
+	}
 	for _, n := range sources {
 		r.Sources = append(r.Sources, n.ID)
 	}
@@ -120,7 +129,12 @@ func (p *parser) addRelationship(m map[string]any, path string) {
 	// so checking their types once avoids materializing a Cartesian product.
 	if len(sources) != 0 && len(targets) != 0 {
 		for _, candidate := range []string{"http_call", "db_query", "publish", "consume"} {
-			if (typ == "" || typ == candidate) && (protocolType == "" || protocolType == candidate) && compatible(candidate, sources[0].Type, targets[0].Type) {
+			matchesType := typ == "" || typ == candidate
+			matchesProtocol := protocolType == "" || protocolType == candidate
+			if !matchesType || !matchesProtocol {
+				continue
+			}
+			if compatible(candidate, sources[0].Type, targets[0].Type) {
 				r.Types = append(r.Types, candidate)
 			}
 		}
