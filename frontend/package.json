@@ -7,6 +7,9 @@
     "node": "^22.12.0 || >=24.0.0"
   },
   "scripts": {
+    "mocks:generate": "node scripts/generate-architecture-mock.mjs",
+    "mocks:check": "node scripts/generate-architecture-mock.mjs --check",
+    "predev": "npm run mocks:generate",
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",

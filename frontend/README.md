@@ -24,6 +24,29 @@ npm run build  # проверка TypeScript и production-сборка
 
 ## Данные и интерфейс
 
+Источник архитектуры — `examples/opentelemetry-demo.architecture.json`.
+`public/mocks/architecture.json` — сгенерированный файл; вручную его не редактируем.
+
+После изменения эталона:
+
+```bash
+cd frontend
+npm run mocks:generate
+npm run mocks:check
+npm run test:contracts
+```
+
+Генератор копирует эталон, удаляет единственную декларацию `checkout → email` и
+оборачивает модель в ответ API. Ревизия берётся из `analysis.architectureVersion`,
+`updatedAt` фиксирован для синтетического снимка. Эталон и `analysis.json` не меняются.
+Если нужная связь исчезла или стала неоднозначной, генератор завершается с ошибкой.
+Повторный запуск даёт тот же результат. Обновлённый JSON коммитим вместе с эталоном.
+
+`npm run dev` автоматически запускает генерацию перед Vite. Проверка `--check`
+ничего не записывает; она входит в контрактные тесты, поэтому CI обнаружит устаревшую
+копию. `analysis.json` остаётся отдельной фикстурой наблюдений: при изменении топологии
+его нужно согласовать с моделью, метрики и трейсы из CALM не выводятся.
+
 - `public/mocks/architecture.json` — ответ `GET /api/v1/architecture`: CALM 1.2 внутри `model`, версия и время обновления.
 - `public/mocks/analysis.json` — ответ `GET /api/v1/analysis`: нормализованный наблюдаемый граф, метрики, нарушения и диагностика.
 - Снимок OpenTelemetry Demo (Astronomy Shop) по контракту 0.4.0: 23 сервиса, 61 объявленный endpoint, PostgreSQL и Kafka; 64 наблюдаемые связи. Воркеров в эталонной модели нет.

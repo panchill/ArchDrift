@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import Ajv from "ajv";
 import Ajv2020 from "ajv/dist/2020";
@@ -33,6 +35,18 @@ ajv.addFormat("int64", { type: "number", validate: Number.isSafeInteger });
 ajv.addFormat("double", { type: "number", validate: Number.isFinite });
 
 describe("fixtures conform to the backend contract", () => {
+  it("keeps the generated architecture mock up to date without rewriting it", () => {
+    execFileSync(
+      process.execPath,
+      [
+        fileURLToPath(
+          new URL("../scripts/generate-architecture-mock.mjs", import.meta.url),
+        ),
+        "--check",
+      ],
+      { stdio: "pipe" },
+    );
+  });
   it("uses the Demo declaration with only the stale checkout → email link removed", () => {
     const expected = structuredClone(demoModel);
     expected.metadata.archdrift.version = architecture.version;

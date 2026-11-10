@@ -275,6 +275,7 @@ Node.js из `frontend/.nvmrc`: `npm ci`, `npm run test:frontend`, затем `n
 
 Отдельный запуск `npm run test:contracts` после `npm ci` в `frontend/`:
 
+- `architecture.json` воспроизводится генератором из эталона в `examples/`; устаревшая копия отклоняется без перезаписи.
 - Моки ответов `Architecture` и `Analysis` соответствуют схемам из `backend/api/api.yaml`.
 - CALM-модель мока и пример из `examples/` соответствуют официальным локальным схемам CALM 1.2.
 - Проверяются ревизии модели, канонические ID и соответствие статусов связей декларации.
