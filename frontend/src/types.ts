@@ -1,9 +1,5 @@
 export type NodeType =
-  | "service"
-  | "endpoint"
-  | "worker"
-  | "postgres_database"
-  | "kafka_topic";
+  "service" | "endpoint" | "worker" | "postgres_database" | "kafka_topic";
 export type EdgeType = "http_call" | "db_query" | "publish" | "consume";
 export type EdgeStatus = "declared" | "unexpected" | "indeterminate";
 export type DbOperation = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
@@ -62,29 +58,4 @@ export interface Analysis {
     unresolvedResourceSpans: number;
     ignoredMessagingSpans: number;
   };
-}
-export interface CalmNode {
-  "unique-id": string;
-  "node-type": string;
-  name: string;
-  description: string;
-  metadata: { archdrift: Record<string, string> };
-  interfaces?: {
-    "unique-id": string;
-    metadata: { archdrift: { method: string; route: string } };
-  }[];
-}
-export interface Architecture {
-  version: number;
-  updatedAt: string;
-  model: {
-    $schema: string;
-    metadata: { archdrift: { version: number } };
-    nodes: CalmNode[];
-    relationships: Record<string, unknown>[];
-  };
-}
-export interface Snapshot {
-  architecture: Architecture;
-  analysis: Analysis;
 }
