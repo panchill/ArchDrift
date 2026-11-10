@@ -17,6 +17,8 @@ npm run dev
 
 ```bash
 npm test        # unit, contract и integration тесты
+npm run test:frontend  # unit и integration тесты фронтенда
+npm run test:contracts # проверка контрактных фикстур
 npm run build  # проверка TypeScript и production-сборка
 ```
 
