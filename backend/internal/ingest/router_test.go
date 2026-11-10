@@ -1,4 +1,4 @@
-package app
+package ingest
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ func TestRecoveryLogsStackWithoutSensitiveValues(t *testing.T) {
 	previous := log.Writer()
 	log.SetOutput(&output)
 	defer log.SetOutput(previous)
-	router := newRouter(nil)
+	router := NewRouter(nil)
 	router.GET("/panic-test", func(*gin.Context) { panic("sensitive-panic-value") })
 	req := httptest.NewRequest(http.MethodGet, "/panic-test", strings.NewReader("sensitive-body"))
 	req.Header.Set("Authorization", "sensitive-authorization")
@@ -25,7 +25,7 @@ func TestRecoveryLogsStackWithoutSensitiveValues(t *testing.T) {
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d", rec.Code)
 	}
-	if !strings.Contains(output.String(), "HTTP handler panic") || !strings.Contains(output.String(), "http_test.go") {
+	if !strings.Contains(output.String(), "HTTP handler panic") || !strings.Contains(output.String(), "router_test.go") {
 		t.Fatal("panic diagnostics missing")
 	}
 	for _, secret := range []string{"sensitive-panic-value", "sensitive-body", "sensitive-authorization"} {

@@ -33,19 +33,6 @@ For deployment rollback, redeploy the previous binary/image. Its migration is
 idempotent and remains compatible with the schema. Do **not** run goose Down as a
 release rollback: migration 1 Down intentionally drops the spans table.
 
-## OpenAPI types
-
-```sh
-go generate ./internal/api
-```
-
-The generator version is pinned in `go.mod` as a Go tool. Commit
-`internal/api/types.gen.go`; CI checks regeneration produces no diff. Configuration
-generates models only, including unreferenced schemas: no client, server bindings,
-routing or embedded OpenAPI document. `Health` is used by the Gin handler. Graph
-observation types remain internal: API graph types also require declaration and
-matching fields that the observation builder does not compute.
-
 ## Checks
 
 ```sh
@@ -64,9 +51,9 @@ Without that variable integration tests explicitly skip.
 The existing service uses root directory `backend`, `Dockerfile`, `/healthz` and
 a 30-second healthcheck timeout. Those settings and the binary entrypoint are
 unchanged. `DATABASE_URL` retains pgx TLS/connection-string handling, and `PORT`
-is supported without adding an `ADDR` variable. Generated code is committed and
-migrations are embedded, so the non-root runtime image needs no source tree or
-code-generation/migration command at startup.
+is supported without adding an `ADDR` variable. Migrations are embedded, so the
+non-root runtime image needs no source tree or migration command at startup.
+`GIN_MODE=release` disables Gin debug output in the container.
 
 Before merging, require passing backend, frontend and contract CI checks. Check
 new deployment health and OTLP ingestion after rollout; redeploy the preceding

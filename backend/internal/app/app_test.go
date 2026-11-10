@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
 
-	"github.com/panchill/ArchDrift/backend/internal/api"
 	"github.com/panchill/ArchDrift/backend/internal/testdb"
 )
 
@@ -50,10 +49,12 @@ func TestLifecycleMigratesAndDrainsBeforeClosingPool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var health api.Health
+	var health struct {
+		Status string `json:"status"`
+	}
 	err = json.NewDecoder(response.Body).Decode(&health)
 	response.Body.Close()
-	if err != nil || response.StatusCode != 200 || health.Status != api.Ok {
+	if err != nil || response.StatusCode != 200 || health.Status != "ok" {
 		t.Fatalf("health=%+v status=%d error=%v", health, response.StatusCode, err)
 	}
 	requestDone := make(chan error, 1)

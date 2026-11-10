@@ -112,11 +112,6 @@ jobs:
             backend/go.mod
             backend/go.sum
 
-      - name: Verify generated OpenAPI types
-        run: |
-          go generate ./internal/api
-          git diff --exit-code -- internal/api/types.gen.go
-
       - name: Check Go formatting
         if: hashFiles('backend/go.mod') != ''
         run: |
