@@ -49,6 +49,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     await user.click(
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     );
+    await screen.findByRole("img", { name: /87 узлов/ });
     await user.click(
       screen.getByRole("button", { name: "Сбросить масштаб к 100%" }),
     );
@@ -77,7 +78,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     await user.click(
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     );
-    expect(screen.getByRole("img")).toHaveAccessibleName(/87 узлов, 64 связей/);
+    await screen.findByRole("img", { name: /87 узлов, 64 связей/ });
     expect(previous.destroyed()).toBe(true);
     expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(62);
     expect(cores.at(-1)!.nodes(".worker")).toHaveLength(0);
