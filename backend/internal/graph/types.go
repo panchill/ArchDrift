@@ -5,39 +5,39 @@ import (
 )
 
 type Node struct {
-	ID          string
-	Label       string
-	Type        string
-	ParentID    string
-	ServiceName string
-	Method      string
-	Route       string
-	WorkerName  string
-	Instance    string
-	Database    string
-	Cluster     string
-	Topic       string
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Type        string `json:"type"`
+	ParentID    string `json:"parentId,omitempty"`
+	ServiceName string `json:"serviceName,omitempty"`
+	Method      string `json:"method,omitempty"`
+	Route       string `json:"route,omitempty"`
+	WorkerName  string `json:"workerName,omitempty"`
+	Instance    string `json:"instance,omitempty"`
+	Database    string `json:"database,omitempty"`
+	Cluster     string `json:"cluster,omitempty"`
+	Topic       string `json:"topic,omitempty"`
 }
 
 type Edge struct {
-	Source             string
-	Target             string
-	Type               string
-	DBOperation        string
-	ObservedOperations int
-	ErrorOperations    int
-	AvgDurationMs      float64
-	FirstSeenAt        time.Time
-	LastSeenAt         time.Time
-	ExampleTraceID     string
-	ExampleSpanID      string
+	Source             string    `json:"source"`
+	Target             string    `json:"target"`
+	Type               string    `json:"type"`
+	DBOperation        string    `json:"dbOperation,omitempty"`
+	ObservedOperations int       `json:"observedOperations"`
+	ErrorOperations    int       `json:"errorOperations"`
+	AvgDurationMs      float64   `json:"avgDurationMs"`
+	FirstSeenAt        time.Time `json:"firstSeenAt"`
+	LastSeenAt         time.Time `json:"lastSeenAt"`
+	ExampleTraceID     string    `json:"exampleTraceId"`
+	ExampleSpanID      string    `json:"exampleSpanId"`
 }
 
 type Diagnostics struct {
-	UnmatchedHTTPClientSpans int
-	ServiceLevelOperations   int
-	UnresolvedResourceSpans  int
-	IgnoredMessagingSpans    int
+	UnmatchedHTTPClientSpans int `json:"unmatchedHttpClientSpans"`
+	ServiceLevelOperations   int `json:"serviceLevelOperations"`
+	UnresolvedResourceSpans  int `json:"unresolvedResourceSpans"`
+	IgnoredMessagingSpans    int `json:"ignoredMessagingSpans"`
 }
 
 type Graph struct {
