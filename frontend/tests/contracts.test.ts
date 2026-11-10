@@ -17,7 +17,10 @@ import flow from "./schemas/flow.json";
 const analysis = rawAnalysis as Analysis;
 const demoModel = JSON.parse(
   readFileSync(
-    new URL("../../examples/opentelemetry-demo.architecture.json", import.meta.url),
+    new URL(
+      "../../examples/opentelemetry-demo.architecture.json",
+      import.meta.url,
+    ),
     "utf8",
   ),
 );
@@ -30,6 +33,70 @@ ajv.addFormat("int64", { type: "number", validate: Number.isSafeInteger });
 ajv.addFormat("double", { type: "number", validate: Number.isFinite });
 
 describe("fixtures conform to the backend contract", () => {
+  it("uses the Demo declaration with only the stale checkout → email link removed", () => {
+    const expected = structuredClone(demoModel);
+    expected.metadata.archdrift.version = architecture.version;
+    expected.relationships = expected.relationships.filter(
+      (r: (typeof architecture.model.relationships)[number]) => {
+        const c = r["relationship-type"].connects;
+        return !(
+          c.source.node === "checkout" && c.destination.node === "email"
+        );
+      },
+    );
+    expect(architecture.model).toEqual(expected);
+    expect(analysis.nodes.filter((n) => !n.known)).toHaveLength(1);
+    expect(
+      analysis.edges.filter((e) => e.status === "indeterminate"),
+    ).toHaveLength(2);
+    expect(analysis.violations).toHaveLength(1);
+    expect(analysis.violations[0].source).toBe(
+      "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+    );
+    expect(analysis.violations[0].target).toBe(
+      "endpoint:email:POST:%2Fsend_order_confirmation",
+    );
+  });
+  it("assigns statuses consistently with CALM scopes, including service fallbacks", () => {
+    const nodes = new Map(analysis.nodes.map((n) => [n.node.id, n]));
+    const matches = (
+      s: { node: string; interfaces?: string[] },
+      id: string,
+      fallback: boolean,
+    ) => {
+      const n = nodes.get(id)!;
+      const owner = "parentId" in n.node ? nodes.get(n.node.parentId)! : n;
+      return (
+        owner.calmNodeId === s.node &&
+        (!s.interfaces?.length ||
+          s.interfaces.includes(n.calmInterfaceId ?? "") ||
+          (fallback && n.node.type === "service"))
+      );
+    };
+    for (const edge of analysis.edges) {
+      const matching = (fallback: boolean) =>
+        architecture.model.relationships
+          .filter((r) => {
+            const c = r["relationship-type"].connects;
+            return (
+              r.metadata.archdrift.type === edge.type &&
+              matches(c.source, edge.source, fallback) &&
+              matches(c.destination, edge.target, fallback)
+            );
+          })
+          .map((r) => r["unique-id"])
+          .sort();
+      const full = matching(false);
+      expect(edge.matchedRelationshipIds).toEqual(full);
+      expect(edge.status).toBe(
+        full.length
+          ? "declared"
+          : matching(true).length
+            ? "indeterminate"
+            : "unexpected",
+      );
+    }
+  });
   it("requires an expected revision for PUT, allowing zero only in the input", () => {
     const input = ajv.compile({
       $ref: "#/components/schemas/ArchitectureInput",
@@ -109,7 +176,11 @@ describe("fixtures conform to the backend contract", () => {
     expect(nodeIds.size).toBe(nodes.length);
     const owners: string[] = [];
     for (const relationship of architecture.model.relationships) {
-      const kind = relationship["relationship-type"];
+      const kind = relationship[
+        "relationship-type"
+      ] as (typeof relationship)["relationship-type"] & {
+        "composed-of"?: { container: string; nodes: string[] };
+      };
       if (kind["composed-of"]) {
         expect(nodeIds.has(kind["composed-of"].container)).toBe(true);
         owners.push(...kind["composed-of"].nodes);
@@ -133,6 +204,33 @@ describe("fixtures conform to the backend contract", () => {
   });
   it("all observed references, DB operations, evidence and violations are consistent", () => {
     const ids = new Set(analysis.nodes.map((n) => n.node.id));
+    const encode = (value: string) =>
+      encodeURIComponent(value).replace(
+        /[!'()*]/g,
+        (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+      );
+    for (const { node } of analysis.nodes) {
+      const parts =
+        node.type === "service"
+          ? ["service", node.serviceName]
+          : node.type === "endpoint"
+            ? [
+                "endpoint",
+                decodeURIComponent(node.parentId.slice(8)),
+                node.method,
+                node.route,
+              ]
+            : node.type === "postgres_database"
+              ? ["postgres", node.instance, node.database]
+              : node.type === "kafka_topic"
+                ? ["kafka", node.cluster, node.topic]
+                : [
+                    "worker",
+                    decodeURIComponent(node.parentId.slice(8)),
+                    node.workerName,
+                  ];
+      expect(node.id).toBe(parts.map(encode).join(":"));
+    }
     const relationshipIds = new Set(
       architecture.model.relationships
         .filter((r) => r["relationship-type"].connects)

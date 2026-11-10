@@ -1,572 +1,2191 @@
 {
   "architectureVersion": 1,
-  "from": "2026-11-09T20:00:00Z",
-  "to": "2026-11-09T20:05:00Z",
-  "generatedAt": "2026-11-09T20:05:01Z",
+  "to": "2026-11-10T10:05:00Z",
+  "generatedAt": "2026-11-10T10:05:01Z",
   "nodes": [
     {
       "node": {
-        "id": "endpoint:gateway:GET:%2Forders%2F%7Bid%7D",
-        "label": "GET /orders/{id}",
+        "id": "endpoint:ad:POST:%2Foteldemo.AdService%2FGetAds",
         "type": "endpoint",
-        "parentId": "service:gateway",
+        "parentId": "service:ad",
+        "label": "POST /oteldemo.AdService/GetAds",
+        "method": "POST",
+        "route": "/oteldemo.AdService/GetAds"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "ad",
+      "calmInterfaceId": "ad--post-oteldemo-AdService-GetAds"
+    },
+    {
+      "node": {
+        "id": "endpoint:agent:POST:%2Fprompt",
+        "type": "endpoint",
+        "parentId": "service:agent",
+        "label": "POST /prompt",
+        "method": "POST",
+        "route": "/prompt"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "agent",
+      "calmInterfaceId": "agent--post-prompt"
+    },
+    {
+      "node": {
+        "id": "endpoint:cart:POST:%2Foteldemo.CartService%2FAddItem",
+        "type": "endpoint",
+        "parentId": "service:cart",
+        "label": "POST /oteldemo.CartService/AddItem",
+        "method": "POST",
+        "route": "/oteldemo.CartService/AddItem"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "cart",
+      "calmInterfaceId": "cart--post-oteldemo-CartService-AddItem"
+    },
+    {
+      "node": {
+        "id": "endpoint:cart:POST:%2Foteldemo.CartService%2FEmptyCart",
+        "type": "endpoint",
+        "parentId": "service:cart",
+        "label": "POST /oteldemo.CartService/EmptyCart",
+        "method": "POST",
+        "route": "/oteldemo.CartService/EmptyCart"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "cart",
+      "calmInterfaceId": "cart--post-oteldemo-CartService-EmptyCart"
+    },
+    {
+      "node": {
+        "id": "endpoint:cart:POST:%2Foteldemo.CartService%2FGetCart",
+        "type": "endpoint",
+        "parentId": "service:cart",
+        "label": "POST /oteldemo.CartService/GetCart",
+        "method": "POST",
+        "route": "/oteldemo.CartService/GetCart"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "cart",
+      "calmInterfaceId": "cart--post-oteldemo-CartService-GetCart"
+    },
+    {
+      "node": {
+        "id": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+        "type": "endpoint",
+        "parentId": "service:checkout",
+        "label": "POST /oteldemo.CheckoutService/PlaceOrder",
+        "method": "POST",
+        "route": "/oteldemo.CheckoutService/PlaceOrder"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "checkout",
+      "calmInterfaceId": "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+    },
+    {
+      "node": {
+        "id": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
+        "type": "endpoint",
+        "parentId": "service:currency",
+        "label": "POST /oteldemo.CurrencyService/Convert",
+        "method": "POST",
+        "route": "/oteldemo.CurrencyService/Convert"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "currency",
+      "calmInterfaceId": "currency--post-oteldemo-CurrencyService-Convert"
+    },
+    {
+      "node": {
+        "id": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FGetSupportedCurrencies",
+        "type": "endpoint",
+        "parentId": "service:currency",
+        "label": "POST /oteldemo.CurrencyService/GetSupportedCurrencies",
+        "method": "POST",
+        "route": "/oteldemo.CurrencyService/GetSupportedCurrencies"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "currency",
+      "calmInterfaceId": "currency--post-oteldemo-CurrencyService-GetSupportedCurrencies"
+    },
+    {
+      "node": {
+        "id": "endpoint:email:POST:%2Fsend_order_confirmation",
+        "type": "endpoint",
+        "parentId": "service:email",
+        "label": "POST /send_order_confirmation",
+        "method": "POST",
+        "route": "/send_order_confirmation"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "email",
+      "calmInterfaceId": "email--post-send_order_confirmation"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd-ui:GET:%2F",
+        "type": "endpoint",
+        "parentId": "service:flagd-ui",
+        "label": "GET /",
         "method": "GET",
-        "route": "/orders/{id}"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "svc-gateway",
-      "calmInterfaceId": "lookup"
-    },
-    {
-      "node": {
-        "id": "endpoint:gateway:POST:%2Fcheckout",
-        "label": "POST /checkout",
-        "type": "endpoint",
-        "parentId": "service:gateway",
-        "method": "POST",
-        "route": "/checkout"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "svc-gateway",
-      "calmInterfaceId": "checkout"
-    },
-    {
-      "node": {
-        "id": "endpoint:inventory:POST:%2Freservations",
-        "label": "POST /reservations",
-        "type": "endpoint",
-        "parentId": "service:inventory",
-        "method": "POST",
-        "route": "/reservations"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "svc-inventory",
-      "calmInterfaceId": "reserve"
-    },
-    {
-      "node": {
-        "id": "endpoint:orders:GET:%2Forders%2F%7Bid%7D",
-        "label": "GET /orders/{id}",
-        "type": "endpoint",
-        "parentId": "service:orders",
-        "method": "GET",
-        "route": "/orders/{id}"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "svc-orders",
-      "calmInterfaceId": "lookup"
-    },
-    {
-      "node": {
-        "id": "endpoint:orders:POST:%2Forders",
-        "label": "POST /orders",
-        "type": "endpoint",
-        "parentId": "service:orders",
-        "method": "POST",
-        "route": "/orders"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "svc-orders",
-      "calmInterfaceId": "create"
-    },
-    {
-      "node": {
-        "id": "endpoint:orders:POST:%2Forders%2F%7Bid%7D%2Fcancel",
-        "label": "POST /orders/{id}/cancel",
-        "type": "endpoint",
-        "parentId": "service:orders",
-        "method": "POST",
-        "route": "/orders/{id}/cancel"
+        "route": "/"
       },
       "known": true,
       "observed": false,
-      "calmNodeId": "svc-orders",
-      "calmInterfaceId": "cancel"
+      "calmNodeId": "flagd-ui",
+      "calmInterfaceId": "flagd-ui--get-root"
     },
     {
       "node": {
-        "id": "endpoint:payments:GET:%2Fpayments%2F%7Bid%7D",
-        "label": "GET /payments/{id}",
+        "id": "endpoint:flagd-ui:GET:%2Fadvanced",
         "type": "endpoint",
-        "parentId": "service:payments",
+        "parentId": "service:flagd-ui",
+        "label": "GET /advanced",
         "method": "GET",
-        "route": "/payments/{id}"
+        "route": "/advanced"
       },
       "known": true,
-      "observed": true,
-      "calmNodeId": "svc-payments",
-      "calmInterfaceId": "lookup"
+      "observed": false,
+      "calmNodeId": "flagd-ui",
+      "calmInterfaceId": "flagd-ui--get-advanced"
     },
     {
       "node": {
-        "id": "endpoint:payments:POST:%2Fpayments",
-        "label": "POST /payments",
+        "id": "endpoint:flagd-ui:GET:%2Fapi%2Fread",
         "type": "endpoint",
-        "parentId": "service:payments",
+        "parentId": "service:flagd-ui",
+        "label": "GET /api/read",
+        "method": "GET",
+        "route": "/api/read"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd-ui",
+      "calmInterfaceId": "flagd-ui--get-api-read"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd-ui:GET:%2Fapi%2Fread-file",
+        "type": "endpoint",
+        "parentId": "service:flagd-ui",
+        "label": "GET /api/read-file",
+        "method": "GET",
+        "route": "/api/read-file"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd-ui",
+      "calmInterfaceId": "flagd-ui--get-api-read-file"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd-ui:GET:%2Fscheduler",
+        "type": "endpoint",
+        "parentId": "service:flagd-ui",
+        "label": "GET /scheduler",
+        "method": "GET",
+        "route": "/scheduler"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd-ui",
+      "calmInterfaceId": "flagd-ui--get-scheduler"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd-ui:POST:%2Fapi%2Fwrite",
+        "type": "endpoint",
+        "parentId": "service:flagd-ui",
+        "label": "POST /api/write",
         "method": "POST",
-        "route": "/payments"
+        "route": "/api/write"
       },
       "known": true,
-      "observed": true,
-      "calmNodeId": "svc-payments",
-      "calmInterfaceId": "charge"
+      "observed": false,
+      "calmNodeId": "flagd-ui",
+      "calmInterfaceId": "flagd-ui--post-api-write"
     },
     {
       "node": {
-        "id": "kafka:shop-events:orders.created",
-        "label": "orders.created",
-        "type": "kafka_topic",
-        "cluster": "shop-events",
-        "topic": "orders.created"
+        "id": "endpoint:flagd-ui:POST:%2Fapi%2Fwrite-to-file",
+        "type": "endpoint",
+        "parentId": "service:flagd-ui",
+        "label": "POST /api/write-to-file",
+        "method": "POST",
+        "route": "/api/write-to-file"
       },
       "known": true,
-      "observed": true,
-      "calmNodeId": "topic-orders.created"
+      "observed": false,
+      "calmNodeId": "flagd-ui",
+      "calmInterfaceId": "flagd-ui--post-api-write-to-file"
     },
     {
       "node": {
-        "id": "kafka:shop-events:orders.debug",
-        "label": "orders.debug",
-        "type": "kafka_topic",
-        "cluster": "shop-events",
-        "topic": "orders.debug"
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v1.Service%2FEventStream",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v1.Service/EventStream",
+        "method": "POST",
+        "route": "/flagd.evaluation.v1.Service/EventStream"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v1-Service-EventStream"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v1.Service%2FResolveAll",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v1.Service/ResolveAll",
+        "method": "POST",
+        "route": "/flagd.evaluation.v1.Service/ResolveAll"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v1-Service-ResolveAll"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v1.Service%2FResolveBoolean",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v1.Service/ResolveBoolean",
+        "method": "POST",
+        "route": "/flagd.evaluation.v1.Service/ResolveBoolean"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v1-Service-ResolveBoolean"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v1.Service%2FResolveFloat",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v1.Service/ResolveFloat",
+        "method": "POST",
+        "route": "/flagd.evaluation.v1.Service/ResolveFloat"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v1-Service-ResolveFloat"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v1.Service%2FResolveInt",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v1.Service/ResolveInt",
+        "method": "POST",
+        "route": "/flagd.evaluation.v1.Service/ResolveInt"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v1-Service-ResolveInt"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v1.Service%2FResolveObject",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v1.Service/ResolveObject",
+        "method": "POST",
+        "route": "/flagd.evaluation.v1.Service/ResolveObject"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v1-Service-ResolveObject"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v1.Service%2FResolveString",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v1.Service/ResolveString",
+        "method": "POST",
+        "route": "/flagd.evaluation.v1.Service/ResolveString"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v1-Service-ResolveString"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fofrep%2Fv1%2Fevaluate%2Fflags",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /ofrep/v1/evaluate/flags",
+        "method": "POST",
+        "route": "/ofrep/v1/evaluate/flags"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-ofrep-v1-evaluate-flags"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fofrep%2Fv1%2Fevaluate%2Fflags%2F%7Bkey%7D",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /ofrep/v1/evaluate/flags/{key}",
+        "method": "POST",
+        "route": "/ofrep/v1/evaluate/flags/{key}"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-ofrep-v1-evaluate-flags-key"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /",
+        "method": "GET",
+        "route": "/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-root"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2Fchatbot%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /chatbot/",
+        "method": "GET",
+        "route": "/chatbot/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-chatbot"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2Ffeature",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /feature",
+        "method": "GET",
+        "route": "/feature"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-feature"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2Fgrafana%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /grafana/",
+        "method": "GET",
+        "route": "/grafana/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-grafana"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2Fimages%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /images/",
+        "method": "GET",
+        "route": "/images/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-images"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2Fjaeger%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /jaeger/",
+        "method": "GET",
+        "route": "/jaeger/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-jaeger"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2Floadgen%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /loadgen/",
+        "method": "GET",
+        "route": "/loadgen/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-loadgen"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2Fopamp%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /opamp/",
+        "method": "GET",
+        "route": "/opamp/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-opamp"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2Fprofiles%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /profiles/",
+        "method": "GET",
+        "route": "/profiles/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-profiles"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:GET:%2Ftelemetry%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "GET /telemetry/",
+        "method": "GET",
+        "route": "/telemetry/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--get-telemetry"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:POST:%2Fflagservice%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "POST /flagservice/",
+        "method": "POST",
+        "route": "/flagservice/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--post-flagservice"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend-proxy:POST:%2Fotlp-http%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend-proxy",
+        "label": "POST /otlp-http/",
+        "method": "POST",
+        "route": "/otlp-http/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend-proxy",
+      "calmInterfaceId": "frontend-proxy--post-otlp-http"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:DELETE:%2Fapi%2Fcart",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "DELETE /api/cart",
+        "method": "DELETE",
+        "route": "/api/cart"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--delete-api-cart"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2F",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /",
+        "method": "GET",
+        "route": "/"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-root"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fapi%2Fcart",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /api/cart",
+        "method": "GET",
+        "route": "/api/cart"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-api-cart"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fapi%2Fcurrency",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /api/currency",
+        "method": "GET",
+        "route": "/api/currency"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-api-currency"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fapi%2Fdata",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /api/data",
+        "method": "GET",
+        "route": "/api/data"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-api-data"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fapi%2Fexperimental",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /api/experimental",
+        "method": "GET",
+        "route": "/api/experimental"
       },
       "known": false,
       "observed": true
     },
     {
       "node": {
-        "id": "kafka:shop-events:payments.completed",
-        "label": "payments.completed",
+        "id": "endpoint:frontend:GET:%2Fapi%2Fproducts",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /api/products",
+        "method": "GET",
+        "route": "/api/products"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-api-products"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fapi%2Fproducts%2F%5BproductId%5D",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /api/products/[productId]",
+        "method": "GET",
+        "route": "/api/products/[productId]"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-api-products-productId"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fapi%2Frecommendations",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /api/recommendations",
+        "method": "GET",
+        "route": "/api/recommendations"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-api-recommendations"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fapi%2Fshipping",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /api/shipping",
+        "method": "GET",
+        "route": "/api/shipping"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-api-shipping"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fcart",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /cart",
+        "method": "GET",
+        "route": "/cart"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-cart"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fcart%2Fcheckout%2F%5BorderId%5D",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /cart/checkout/[orderId]",
+        "method": "GET",
+        "route": "/cart/checkout/[orderId]"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-cart-checkout-orderId"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fproduct%2F%5BproductId%5D",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /product/[productId]",
+        "method": "GET",
+        "route": "/product/[productId]"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-product-productId"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:POST:%2Fapi%2Fcart",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "POST /api/cart",
+        "method": "POST",
+        "route": "/api/cart"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--post-api-cart"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:POST:%2Fapi%2Fcheckout",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "POST /api/checkout",
+        "method": "POST",
+        "route": "/api/checkout"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--post-api-checkout"
+    },
+    {
+      "node": {
+        "id": "endpoint:image-provider:GET:%2Fproducts%2F%7Bfile%7D",
+        "type": "endpoint",
+        "parentId": "service:image-provider",
+        "label": "GET /products/{file}",
+        "method": "GET",
+        "route": "/products/{file}"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "image-provider",
+      "calmInterfaceId": "image-provider--get-products-file"
+    },
+    {
+      "node": {
+        "id": "endpoint:mcp:POST:%2Fmcp",
+        "type": "endpoint",
+        "parentId": "service:mcp",
+        "label": "POST /mcp",
+        "method": "POST",
+        "route": "/mcp"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "mcp",
+      "calmInterfaceId": "mcp--post-mcp"
+    },
+    {
+      "node": {
+        "id": "endpoint:payment:POST:%2Foteldemo.PaymentService%2FCharge",
+        "type": "endpoint",
+        "parentId": "service:payment",
+        "label": "POST /oteldemo.PaymentService/Charge",
+        "method": "POST",
+        "route": "/oteldemo.PaymentService/Charge"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "payment",
+      "calmInterfaceId": "payment--post-oteldemo-PaymentService-Charge"
+    },
+    {
+      "node": {
+        "id": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FGetProduct",
+        "type": "endpoint",
+        "parentId": "service:product-catalog",
+        "label": "POST /oteldemo.ProductCatalogService/GetProduct",
+        "method": "POST",
+        "route": "/oteldemo.ProductCatalogService/GetProduct"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "product-catalog",
+      "calmInterfaceId": "product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
+    },
+    {
+      "node": {
+        "id": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FListProducts",
+        "type": "endpoint",
+        "parentId": "service:product-catalog",
+        "label": "POST /oteldemo.ProductCatalogService/ListProducts",
+        "method": "POST",
+        "route": "/oteldemo.ProductCatalogService/ListProducts"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "product-catalog",
+      "calmInterfaceId": "product-catalog--post-oteldemo-ProductCatalogService-ListProducts"
+    },
+    {
+      "node": {
+        "id": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FSearchProducts",
+        "type": "endpoint",
+        "parentId": "service:product-catalog",
+        "label": "POST /oteldemo.ProductCatalogService/SearchProducts",
+        "method": "POST",
+        "route": "/oteldemo.ProductCatalogService/SearchProducts"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "product-catalog",
+      "calmInterfaceId": "product-catalog--post-oteldemo-ProductCatalogService-SearchProducts"
+    },
+    {
+      "node": {
+        "id": "endpoint:quote:POST:%2Fgetquote",
+        "type": "endpoint",
+        "parentId": "service:quote",
+        "label": "POST /getquote",
+        "method": "POST",
+        "route": "/getquote"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "quote",
+      "calmInterfaceId": "quote--post-getquote"
+    },
+    {
+      "node": {
+        "id": "endpoint:recommendation:POST:%2Foteldemo.RecommendationService%2FListRecommendations",
+        "type": "endpoint",
+        "parentId": "service:recommendation",
+        "label": "POST /oteldemo.RecommendationService/ListRecommendations",
+        "method": "POST",
+        "route": "/oteldemo.RecommendationService/ListRecommendations"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "recommendation",
+      "calmInterfaceId": "recommendation--post-oteldemo-RecommendationService-ListRecommendations"
+    },
+    {
+      "node": {
+        "id": "endpoint:shipping:POST:%2Fget-quote",
+        "type": "endpoint",
+        "parentId": "service:shipping",
+        "label": "POST /get-quote",
+        "method": "POST",
+        "route": "/get-quote"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "shipping",
+      "calmInterfaceId": "shipping--post-get-quote"
+    },
+    {
+      "node": {
+        "id": "endpoint:shipping:POST:%2Fship-order",
+        "type": "endpoint",
+        "parentId": "service:shipping",
+        "label": "POST /ship-order",
+        "method": "POST",
+        "route": "/ship-order"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "shipping",
+      "calmInterfaceId": "shipping--post-ship-order"
+    },
+    {
+      "node": {
+        "id": "kafka:kafka:orders",
         "type": "kafka_topic",
-        "cluster": "shop-events",
-        "topic": "payments.completed"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "topic-payments.completed"
-    },
-    {
-      "node": {
-        "id": "postgres:shop-pg:inventory_db",
-        "label": "inventory_db",
-        "type": "postgres_database",
-        "instance": "shop-pg",
-        "database": "inventory_db"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "db-inventory_db"
-    },
-    {
-      "node": {
-        "id": "postgres:shop-pg:orders_db",
-        "label": "orders_db",
-        "type": "postgres_database",
-        "instance": "shop-pg",
-        "database": "orders_db"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "db-orders_db"
-    },
-    {
-      "node": {
-        "id": "postgres:shop-pg:payments_db",
-        "label": "payments_db",
-        "type": "postgres_database",
-        "instance": "shop-pg",
-        "database": "payments_db"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "db-payments_db"
-    },
-    {
-      "node": {
-        "id": "service:gateway",
-        "label": "gateway",
-        "type": "service",
-        "serviceName": "gateway"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "svc-gateway"
-    },
-    {
-      "node": {
-        "id": "service:inventory",
-        "label": "inventory",
-        "type": "service",
-        "serviceName": "inventory"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "svc-inventory"
-    },
-    {
-      "node": {
-        "id": "service:notifications",
-        "label": "notifications",
-        "type": "service",
-        "serviceName": "notifications"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "svc-notifications"
-    },
-    {
-      "node": {
-        "id": "service:orders",
         "label": "orders",
+        "cluster": "kafka",
+        "topic": "orders"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "orders-topic"
+    },
+    {
+      "node": {
+        "id": "postgres:astronomy-db:astronomy_db",
+        "type": "postgres_database",
+        "label": "astronomy_db",
+        "instance": "astronomy-db",
+        "database": "astronomy_db"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "astronomy-db"
+    },
+    {
+      "node": {
+        "id": "service:accounting",
         "type": "service",
-        "serviceName": "orders"
+        "label": "Accounting",
+        "serviceName": "accounting"
       },
       "known": true,
       "observed": true,
-      "calmNodeId": "svc-orders"
+      "calmNodeId": "accounting"
     },
     {
       "node": {
-        "id": "service:payments",
-        "label": "payments",
+        "id": "service:ad",
         "type": "service",
-        "serviceName": "payments"
+        "label": "Ad",
+        "serviceName": "ad"
       },
       "known": true,
       "observed": true,
-      "calmNodeId": "svc-payments"
+      "calmNodeId": "ad"
     },
     {
       "node": {
-        "id": "worker:inventory:release-reservation",
-        "label": "release-reservation",
-        "type": "worker",
-        "parentId": "service:inventory",
-        "workerName": "release-reservation"
+        "id": "service:agent",
+        "type": "service",
+        "label": "Agent",
+        "serviceName": "agent"
       },
       "known": true,
       "observed": true,
-      "calmNodeId": "worker-release-reservation"
+      "calmNodeId": "agent"
     },
     {
       "node": {
-        "id": "worker:notifications:send-email",
-        "label": "send-email",
-        "type": "worker",
-        "parentId": "service:notifications",
-        "workerName": "send-email"
+        "id": "service:cart",
+        "type": "service",
+        "label": "Cart",
+        "serviceName": "cart"
       },
       "known": true,
       "observed": true,
-      "calmNodeId": "worker-send-email"
+      "calmNodeId": "cart"
+    },
+    {
+      "node": {
+        "id": "service:chatbot",
+        "type": "service",
+        "label": "Chatbot",
+        "serviceName": "chatbot"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "chatbot"
+    },
+    {
+      "node": {
+        "id": "service:checkout",
+        "type": "service",
+        "label": "Checkout",
+        "serviceName": "checkout"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "checkout"
+    },
+    {
+      "node": {
+        "id": "service:currency",
+        "type": "service",
+        "label": "Currency",
+        "serviceName": "currency"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "currency"
+    },
+    {
+      "node": {
+        "id": "service:email",
+        "type": "service",
+        "label": "Email",
+        "serviceName": "email"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "email"
+    },
+    {
+      "node": {
+        "id": "service:flagd",
+        "type": "service",
+        "label": "flagd",
+        "serviceName": "flagd"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "flagd"
+    },
+    {
+      "node": {
+        "id": "service:flagd-ui",
+        "type": "service",
+        "label": "flagd UI",
+        "serviceName": "flagd-ui"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "flagd-ui"
+    },
+    {
+      "node": {
+        "id": "service:fraud-detection",
+        "type": "service",
+        "label": "Fraud Detection",
+        "serviceName": "fraud-detection"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "fraud-detection"
+    },
+    {
+      "node": {
+        "id": "service:frontend",
+        "type": "service",
+        "label": "Frontend",
+        "serviceName": "frontend"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend"
+    },
+    {
+      "node": {
+        "id": "service:frontend-proxy",
+        "type": "service",
+        "label": "Frontend Proxy",
+        "serviceName": "frontend-proxy"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend-proxy"
+    },
+    {
+      "node": {
+        "id": "service:frontend-web",
+        "type": "service",
+        "label": "Frontend Web",
+        "serviceName": "frontend-web"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend-web"
+    },
+    {
+      "node": {
+        "id": "service:image-provider",
+        "type": "service",
+        "label": "Image Provider",
+        "serviceName": "image-provider"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "image-provider"
+    },
+    {
+      "node": {
+        "id": "service:load-generator",
+        "type": "service",
+        "label": "Load Generator",
+        "serviceName": "load-generator"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "load-generator"
+    },
+    {
+      "node": {
+        "id": "service:mcp",
+        "type": "service",
+        "label": "MCP Server",
+        "serviceName": "mcp"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "mcp"
+    },
+    {
+      "node": {
+        "id": "service:payment",
+        "type": "service",
+        "label": "Payment",
+        "serviceName": "payment"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "payment"
+    },
+    {
+      "node": {
+        "id": "service:product-catalog",
+        "type": "service",
+        "label": "Product Catalog",
+        "serviceName": "product-catalog"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "product-catalog"
+    },
+    {
+      "node": {
+        "id": "service:quote",
+        "type": "service",
+        "label": "Quote",
+        "serviceName": "quote"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "quote"
+    },
+    {
+      "node": {
+        "id": "service:recommendation",
+        "type": "service",
+        "label": "Recommendation",
+        "serviceName": "recommendation"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "recommendation"
+    },
+    {
+      "node": {
+        "id": "service:shipping",
+        "type": "service",
+        "label": "Shipping",
+        "serviceName": "shipping"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "shipping"
+    },
+    {
+      "node": {
+        "id": "service:telemetry-docs",
+        "type": "service",
+        "label": "Telemetry Docs",
+        "serviceName": "telemetry-docs"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "telemetry-docs"
     }
   ],
   "edges": [
     {
-      "source": "endpoint:gateway:GET:%2Forders%2F%7Bid%7D",
-      "target": "endpoint:orders:GET:%2Forders%2F%7Bid%7D",
+      "source": "endpoint:agent:POST:%2Fprompt",
+      "target": "endpoint:mcp:POST:%2Fmcp",
       "type": "http_call",
-      "observedOperations": 94,
+      "observedOperations": 212,
       "errorOperations": 0,
-      "avgDurationMs": 12,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "avgDurationMs": 79.8,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "declared",
       "matchedRelationshipIds": [
-        "rel-2"
+        "agent--post-prompt--to--mcp--post-mcp"
       ],
-      "exampleTraceId": "00000000000000000000000000000002",
-      "exampleSpanId": "0000000000000002"
+      "exampleTraceId": "0000000000000000000000000000002c",
+      "exampleSpanId": "000000000000002c"
     },
     {
-      "source": "endpoint:gateway:POST:%2Fcheckout",
-      "target": "endpoint:orders:POST:%2Forders",
+      "source": "endpoint:agent:POST:%2Fprompt",
+      "target": "service:frontend",
       "type": "http_call",
-      "observedOperations": 128,
-      "errorOperations": 0,
-      "avgDurationMs": 38,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "observedOperations": 215,
+      "errorOperations": 1,
+      "avgDurationMs": 81.5,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "declared",
       "matchedRelationshipIds": [
-        "rel-1"
+        "agent--post-prompt--to--frontend"
       ],
-      "exampleTraceId": "00000000000000000000000000000001",
-      "exampleSpanId": "0000000000000001"
+      "exampleTraceId": "0000000000000000000000000000002d",
+      "exampleSpanId": "000000000000002d"
     },
     {
-      "source": "endpoint:inventory:POST:%2Freservations",
-      "target": "postgres:shop-pg:inventory_db",
-      "type": "db_query",
-      "observedOperations": 128,
-      "errorOperations": 0,
-      "avgDurationMs": 5,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
-      "status": "declared",
-      "matchedRelationshipIds": [
-        "rel-8"
-      ],
-      "exampleTraceId": "00000000000000000000000000000009",
-      "exampleSpanId": "0000000000000009",
-      "dbOperation": "UPDATE"
-    },
-    {
-      "source": "endpoint:orders:GET:%2Forders%2F%7Bid%7D",
-      "target": "postgres:shop-pg:orders_db",
-      "type": "db_query",
-      "observedOperations": 94,
-      "errorOperations": 0,
-      "avgDurationMs": 3,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
-      "status": "declared",
-      "matchedRelationshipIds": [
-        "rel-6"
-      ],
-      "exampleTraceId": "00000000000000000000000000000007",
-      "exampleSpanId": "0000000000000007",
-      "dbOperation": "SELECT"
-    },
-    {
-      "source": "endpoint:orders:POST:%2Forders",
-      "target": "endpoint:inventory:POST:%2Freservations",
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "endpoint:cart:POST:%2Foteldemo.CartService%2FEmptyCart",
       "type": "http_call",
-      "observedOperations": 128,
-      "errorOperations": 0,
-      "avgDurationMs": 19,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "observedOperations": 179,
+      "errorOperations": 1,
+      "avgDurationMs": 61.1,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "declared",
       "matchedRelationshipIds": [
-        "rel-4"
+        "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--cart--post-oteldemo-CartService-EmptyCart"
       ],
-      "exampleTraceId": "00000000000000000000000000000004",
-      "exampleSpanId": "0000000000000004"
+      "exampleTraceId": "00000000000000000000000000000021",
+      "exampleSpanId": "0000000000000021"
     },
     {
-      "source": "endpoint:orders:POST:%2Forders",
-      "target": "endpoint:payments:POST:%2Fpayments",
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "endpoint:cart:POST:%2Foteldemo.CartService%2FGetCart",
       "type": "http_call",
-      "observedOperations": 121,
-      "errorOperations": 2,
-      "avgDurationMs": 84,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "observedOperations": 176,
+      "errorOperations": 0,
+      "avgDurationMs": 59.4,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "declared",
       "matchedRelationshipIds": [
-        "rel-3"
+        "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--cart--post-oteldemo-CartService-GetCart"
       ],
-      "exampleTraceId": "00000000000000000000000000000003",
-      "exampleSpanId": "0000000000000003"
+      "exampleTraceId": "00000000000000000000000000000020",
+      "exampleSpanId": "0000000000000020"
     },
     {
-      "source": "endpoint:orders:POST:%2Forders",
-      "target": "kafka:shop-events:orders.created",
-      "type": "publish",
-      "observedOperations": 128,
-      "errorOperations": 0,
-      "avgDurationMs": 2,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
+      "type": "http_call",
+      "observedOperations": 185,
+      "errorOperations": 3,
+      "avgDurationMs": 64.5,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "declared",
       "matchedRelationshipIds": [
-        "rel-9"
+        "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--currency--post-oteldemo-CurrencyService-Convert"
       ],
-      "exampleTraceId": "0000000000000000000000000000000a",
-      "exampleSpanId": "000000000000000a"
+      "exampleTraceId": "00000000000000000000000000000023",
+      "exampleSpanId": "0000000000000023"
     },
     {
-      "source": "endpoint:orders:POST:%2Forders",
-      "target": "kafka:shop-events:orders.debug",
-      "type": "publish",
-      "observedOperations": 7,
-      "errorOperations": 0,
-      "avgDurationMs": 1,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "endpoint:email:POST:%2Fsend_order_confirmation",
+      "type": "http_call",
+      "observedOperations": 197,
+      "errorOperations": 3,
+      "avgDurationMs": 71.3,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "unexpected",
       "matchedRelationshipIds": [],
-      "exampleTraceId": "00000000000000000000000000000010",
-      "exampleSpanId": "0000000000000010"
+      "exampleTraceId": "00000000000000000000000000000027",
+      "exampleSpanId": "0000000000000027"
     },
     {
-      "source": "endpoint:orders:POST:%2Forders",
-      "target": "postgres:shop-pg:orders_db",
-      "type": "db_query",
-      "observedOperations": 128,
-      "errorOperations": 0,
-      "avgDurationMs": 4,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
-      "status": "declared",
-      "matchedRelationshipIds": [
-        "rel-5"
-      ],
-      "exampleTraceId": "00000000000000000000000000000005",
-      "exampleSpanId": "0000000000000005",
-      "dbOperation": "INSERT"
-    },
-    {
-      "source": "endpoint:orders:POST:%2Forders",
-      "target": "postgres:shop-pg:orders_db",
-      "type": "db_query",
-      "observedOperations": 128,
-      "errorOperations": 0,
-      "avgDurationMs": 2,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
-      "status": "declared",
-      "matchedRelationshipIds": [
-        "rel-5"
-      ],
-      "exampleTraceId": "00000000000000000000000000000006",
-      "exampleSpanId": "0000000000000006",
-      "dbOperation": "SELECT"
-    },
-    {
-      "source": "endpoint:orders:POST:%2Forders",
-      "target": "service:payments",
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "endpoint:payment:POST:%2Foteldemo.PaymentService%2FCharge",
       "type": "http_call",
-      "observedOperations": 7,
+      "observedOperations": 188,
       "errorOperations": 0,
-      "avgDurationMs": 51,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "avgDurationMs": 66.2,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--payment--post-oteldemo-PaymentService-Charge"
+      ],
+      "exampleTraceId": "00000000000000000000000000000024",
+      "exampleSpanId": "0000000000000024"
+    },
+    {
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FGetProduct",
+      "type": "http_call",
+      "observedOperations": 182,
+      "errorOperations": 2,
+      "avgDurationMs": 62.8,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
+      ],
+      "exampleTraceId": "00000000000000000000000000000022",
+      "exampleSpanId": "0000000000000022"
+    },
+    {
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "endpoint:shipping:POST:%2Fget-quote",
+      "type": "http_call",
+      "observedOperations": 191,
+      "errorOperations": 1,
+      "avgDurationMs": 67.9,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--shipping--post-get-quote"
+      ],
+      "exampleTraceId": "00000000000000000000000000000025",
+      "exampleSpanId": "0000000000000025"
+    },
+    {
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "endpoint:shipping:POST:%2Fship-order",
+      "type": "http_call",
+      "observedOperations": 194,
+      "errorOperations": 2,
+      "avgDurationMs": 69.6,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--shipping--post-ship-order"
+      ],
+      "exampleTraceId": "00000000000000000000000000000026",
+      "exampleSpanId": "0000000000000026"
+    },
+    {
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "kafka:kafka:orders",
+      "type": "publish",
+      "observedOperations": 200,
+      "errorOperations": 0,
+      "avgDurationMs": 73.0,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--orders-topic"
+      ],
+      "exampleTraceId": "00000000000000000000000000000028",
+      "exampleSpanId": "0000000000000028"
+    },
+    {
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "service:payment",
+      "type": "http_call",
+      "observedOperations": 266,
+      "errorOperations": 2,
+      "avgDurationMs": 110.4,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "indeterminate",
       "matchedRelationshipIds": [],
+      "exampleTraceId": "0000000000000000000000000000003e",
+      "exampleSpanId": "000000000000003e"
+    },
+    {
+      "source": "endpoint:frontend:DELETE:%2Fapi%2Fcart",
+      "target": "endpoint:cart:POST:%2Foteldemo.CartService%2FEmptyCart",
+      "type": "http_call",
+      "observedOperations": 131,
+      "errorOperations": 1,
+      "avgDurationMs": 33.9,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--delete-api-cart--to--cart--post-oteldemo-CartService-EmptyCart"
+      ],
       "exampleTraceId": "00000000000000000000000000000011",
       "exampleSpanId": "0000000000000011"
     },
     {
-      "source": "endpoint:payments:POST:%2Fpayments",
-      "target": "kafka:shop-events:payments.completed",
-      "type": "publish",
-      "observedOperations": 119,
+      "source": "endpoint:frontend:GET:%2Fapi%2Fcart",
+      "target": "endpoint:cart:POST:%2Foteldemo.CartService%2FGetCart",
+      "type": "http_call",
+      "observedOperations": 116,
       "errorOperations": 0,
-      "avgDurationMs": 2,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "avgDurationMs": 25.4,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "declared",
       "matchedRelationshipIds": [
-        "rel-11"
+        "frontend--get-api-cart--to--cart--post-oteldemo-CartService-GetCart"
       ],
       "exampleTraceId": "0000000000000000000000000000000c",
       "exampleSpanId": "000000000000000c"
     },
     {
-      "source": "endpoint:payments:POST:%2Fpayments",
-      "target": "postgres:shop-pg:orders_db",
-      "type": "db_query",
-      "observedOperations": 17,
-      "errorOperations": 0,
-      "avgDurationMs": 8,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
-      "status": "unexpected",
-      "matchedRelationshipIds": [],
-      "exampleTraceId": "0000000000000000000000000000000f",
-      "exampleSpanId": "000000000000000f",
-      "dbOperation": "SELECT"
-    },
-    {
-      "source": "endpoint:payments:POST:%2Fpayments",
-      "target": "postgres:shop-pg:payments_db",
-      "type": "db_query",
-      "observedOperations": 121,
-      "errorOperations": 0,
-      "avgDurationMs": 6,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "source": "endpoint:frontend:GET:%2Fapi%2Fcart",
+      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
+      "type": "http_call",
+      "observedOperations": 122,
+      "errorOperations": 2,
+      "avgDurationMs": 28.8,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "declared",
       "matchedRelationshipIds": [
-        "rel-7"
+        "frontend--get-api-cart--to--currency--post-oteldemo-CurrencyService-Convert"
       ],
-      "exampleTraceId": "00000000000000000000000000000008",
-      "exampleSpanId": "0000000000000008",
-      "dbOperation": "INSERT"
+      "exampleTraceId": "0000000000000000000000000000000e",
+      "exampleSpanId": "000000000000000e"
     },
     {
-      "source": "kafka:shop-events:orders.created",
-      "target": "worker:notifications:send-email",
-      "type": "consume",
-      "observedOperations": 126,
-      "errorOperations": 0,
-      "avgDurationMs": 42,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
-      "status": "declared",
-      "matchedRelationshipIds": [
-        "rel-10"
-      ],
-      "exampleTraceId": "0000000000000000000000000000000b",
-      "exampleSpanId": "000000000000000b"
-    },
-    {
-      "source": "kafka:shop-events:payments.completed",
-      "target": "worker:inventory:release-reservation",
-      "type": "consume",
+      "source": "endpoint:frontend:GET:%2Fapi%2Fcart",
+      "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FGetProduct",
+      "type": "http_call",
       "observedOperations": 119,
-      "errorOperations": 0,
-      "avgDurationMs": 9,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "errorOperations": 1,
+      "avgDurationMs": 27.1,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "declared",
       "matchedRelationshipIds": [
-        "rel-12"
+        "frontend--get-api-cart--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
       ],
       "exampleTraceId": "0000000000000000000000000000000d",
       "exampleSpanId": "000000000000000d"
     },
     {
-      "source": "worker:inventory:release-reservation",
-      "target": "postgres:shop-pg:inventory_db",
-      "type": "db_query",
-      "observedOperations": 119,
-      "errorOperations": 0,
-      "avgDurationMs": 4,
-      "firstSeenAt": "2026-11-09T20:00:10Z",
-      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "source": "endpoint:frontend:GET:%2Fapi%2Fcart",
+      "target": "service:cart",
+      "type": "http_call",
+      "observedOperations": 263,
+      "errorOperations": 1,
+      "avgDurationMs": 108.7,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "indeterminate",
+      "matchedRelationshipIds": [],
+      "exampleTraceId": "0000000000000000000000000000003d",
+      "exampleSpanId": "000000000000003d"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fcurrency",
+      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FGetSupportedCurrencies",
+      "type": "http_call",
+      "observedOperations": 143,
+      "errorOperations": 1,
+      "avgDurationMs": 40.7,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
       "status": "declared",
       "matchedRelationshipIds": [
-        "rel-13"
+        "frontend--get-api-currency--to--currency--post-oteldemo-CurrencyService-GetSupportedCurrencies"
       ],
-      "exampleTraceId": "0000000000000000000000000000000e",
-      "exampleSpanId": "000000000000000e",
-      "dbOperation": "UPDATE"
+      "exampleTraceId": "00000000000000000000000000000015",
+      "exampleSpanId": "0000000000000015"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fdata",
+      "target": "endpoint:ad:POST:%2Foteldemo.AdService%2FGetAds",
+      "type": "http_call",
+      "observedOperations": 146,
+      "errorOperations": 2,
+      "avgDurationMs": 42.4,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-data--to--ad--post-oteldemo-AdService-GetAds"
+      ],
+      "exampleTraceId": "00000000000000000000000000000016",
+      "exampleSpanId": "0000000000000016"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts",
+      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
+      "type": "http_call",
+      "observedOperations": 152,
+      "errorOperations": 0,
+      "avgDurationMs": 45.8,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-products--to--currency--post-oteldemo-CurrencyService-Convert"
+      ],
+      "exampleTraceId": "00000000000000000000000000000018",
+      "exampleSpanId": "0000000000000018"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts",
+      "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FListProducts",
+      "type": "http_call",
+      "observedOperations": 149,
+      "errorOperations": 3,
+      "avgDurationMs": 44.1,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-products--to--product-catalog--post-oteldemo-ProductCatalogService-ListProducts"
+      ],
+      "exampleTraceId": "00000000000000000000000000000017",
+      "exampleSpanId": "0000000000000017"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts%2F%5BproductId%5D",
+      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
+      "type": "http_call",
+      "observedOperations": 158,
+      "errorOperations": 2,
+      "avgDurationMs": 49.2,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-products-productId--to--currency--post-oteldemo-CurrencyService-Convert"
+      ],
+      "exampleTraceId": "0000000000000000000000000000001a",
+      "exampleSpanId": "000000000000001a"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts%2F%5BproductId%5D",
+      "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FGetProduct",
+      "type": "http_call",
+      "observedOperations": 155,
+      "errorOperations": 1,
+      "avgDurationMs": 47.5,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-products-productId--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
+      ],
+      "exampleTraceId": "00000000000000000000000000000019",
+      "exampleSpanId": "0000000000000019"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Frecommendations",
+      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
+      "type": "http_call",
+      "observedOperations": 167,
+      "errorOperations": 1,
+      "avgDurationMs": 54.3,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-recommendations--to--currency--post-oteldemo-CurrencyService-Convert"
+      ],
+      "exampleTraceId": "0000000000000000000000000000001d",
+      "exampleSpanId": "000000000000001d"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Frecommendations",
+      "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FGetProduct",
+      "type": "http_call",
+      "observedOperations": 164,
+      "errorOperations": 0,
+      "avgDurationMs": 52.6,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-recommendations--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
+      ],
+      "exampleTraceId": "0000000000000000000000000000001c",
+      "exampleSpanId": "000000000000001c"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Frecommendations",
+      "target": "endpoint:recommendation:POST:%2Foteldemo.RecommendationService%2FListRecommendations",
+      "type": "http_call",
+      "observedOperations": 161,
+      "errorOperations": 3,
+      "avgDurationMs": 50.9,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-recommendations--to--recommendation--post-oteldemo-RecommendationService-ListRecommendations"
+      ],
+      "exampleTraceId": "0000000000000000000000000000001b",
+      "exampleSpanId": "000000000000001b"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fshipping",
+      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
+      "type": "http_call",
+      "observedOperations": 173,
+      "errorOperations": 3,
+      "avgDurationMs": 57.7,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-shipping--to--currency--post-oteldemo-CurrencyService-Convert"
+      ],
+      "exampleTraceId": "0000000000000000000000000000001f",
+      "exampleSpanId": "000000000000001f"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fshipping",
+      "target": "endpoint:shipping:POST:%2Fget-quote",
+      "type": "http_call",
+      "observedOperations": 170,
+      "errorOperations": 2,
+      "avgDurationMs": 56.0,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-shipping--to--shipping--post-get-quote"
+      ],
+      "exampleTraceId": "0000000000000000000000000000001e",
+      "exampleSpanId": "000000000000001e"
+    },
+    {
+      "source": "endpoint:frontend:POST:%2Fapi%2Fcart",
+      "target": "endpoint:cart:POST:%2Foteldemo.CartService%2FAddItem",
+      "type": "http_call",
+      "observedOperations": 125,
+      "errorOperations": 3,
+      "avgDurationMs": 30.5,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--post-api-cart--to--cart--post-oteldemo-CartService-AddItem"
+      ],
+      "exampleTraceId": "0000000000000000000000000000000f",
+      "exampleSpanId": "000000000000000f"
+    },
+    {
+      "source": "endpoint:frontend:POST:%2Fapi%2Fcart",
+      "target": "endpoint:cart:POST:%2Foteldemo.CartService%2FGetCart",
+      "type": "http_call",
+      "observedOperations": 128,
+      "errorOperations": 0,
+      "avgDurationMs": 32.2,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--post-api-cart--to--cart--post-oteldemo-CartService-GetCart"
+      ],
+      "exampleTraceId": "00000000000000000000000000000010",
+      "exampleSpanId": "0000000000000010"
+    },
+    {
+      "source": "endpoint:frontend:POST:%2Fapi%2Fcheckout",
+      "target": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "type": "http_call",
+      "observedOperations": 134,
+      "errorOperations": 2,
+      "avgDurationMs": 35.6,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--post-api-checkout--to--checkout--post-oteldemo-CheckoutService-PlaceOrder"
+      ],
+      "exampleTraceId": "00000000000000000000000000000012",
+      "exampleSpanId": "0000000000000012"
+    },
+    {
+      "source": "endpoint:frontend:POST:%2Fapi%2Fcheckout",
+      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
+      "type": "http_call",
+      "observedOperations": 140,
+      "errorOperations": 0,
+      "avgDurationMs": 39.0,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--post-api-checkout--to--currency--post-oteldemo-CurrencyService-Convert"
+      ],
+      "exampleTraceId": "00000000000000000000000000000014",
+      "exampleSpanId": "0000000000000014"
+    },
+    {
+      "source": "endpoint:frontend:POST:%2Fapi%2Fcheckout",
+      "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FGetProduct",
+      "type": "http_call",
+      "observedOperations": 137,
+      "errorOperations": 3,
+      "avgDurationMs": 37.3,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--post-api-checkout--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
+      ],
+      "exampleTraceId": "00000000000000000000000000000013",
+      "exampleSpanId": "0000000000000013"
+    },
+    {
+      "source": "endpoint:mcp:POST:%2Fmcp",
+      "target": "service:frontend",
+      "type": "http_call",
+      "observedOperations": 218,
+      "errorOperations": 2,
+      "avgDurationMs": 83.2,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "mcp--post-mcp--to--frontend"
+      ],
+      "exampleTraceId": "0000000000000000000000000000002e",
+      "exampleSpanId": "000000000000002e"
+    },
+    {
+      "source": "endpoint:recommendation:POST:%2Foteldemo.RecommendationService%2FListRecommendations",
+      "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FListProducts",
+      "type": "http_call",
+      "observedOperations": 203,
+      "errorOperations": 1,
+      "avgDurationMs": 74.7,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "recommendation--post-oteldemo-RecommendationService-ListRecommendations--to--product-catalog--post-oteldemo-ProductCatalogService-ListProducts"
+      ],
+      "exampleTraceId": "00000000000000000000000000000029",
+      "exampleSpanId": "0000000000000029"
+    },
+    {
+      "source": "endpoint:shipping:POST:%2Fget-quote",
+      "target": "endpoint:quote:POST:%2Fgetquote",
+      "type": "http_call",
+      "observedOperations": 206,
+      "errorOperations": 2,
+      "avgDurationMs": 76.4,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "shipping--post-get-quote--to--quote--post-getquote"
+      ],
+      "exampleTraceId": "0000000000000000000000000000002a",
+      "exampleSpanId": "000000000000002a"
+    },
+    {
+      "source": "kafka:kafka:orders",
+      "target": "service:accounting",
+      "type": "consume",
+      "observedOperations": 251,
+      "errorOperations": 1,
+      "avgDurationMs": 101.9,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "orders-topic--to--accounting"
+      ],
+      "exampleTraceId": "00000000000000000000000000000039",
+      "exampleSpanId": "0000000000000039"
+    },
+    {
+      "source": "kafka:kafka:orders",
+      "target": "service:fraud-detection",
+      "type": "consume",
+      "observedOperations": 254,
+      "errorOperations": 2,
+      "avgDurationMs": 103.6,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "orders-topic--to--fraud-detection"
+      ],
+      "exampleTraceId": "0000000000000000000000000000003a",
+      "exampleSpanId": "000000000000003a"
+    },
+    {
+      "source": "service:accounting",
+      "target": "postgres:astronomy-db:astronomy_db",
+      "type": "db_query",
+      "observedOperations": 260,
+      "errorOperations": 0,
+      "avgDurationMs": 107.0,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "accounting--to--astronomy-db"
+      ],
+      "exampleTraceId": "0000000000000000000000000000003c",
+      "exampleSpanId": "000000000000003c",
+      "dbOperation": "INSERT"
+    },
+    {
+      "source": "service:accounting",
+      "target": "postgres:astronomy-db:astronomy_db",
+      "type": "db_query",
+      "observedOperations": 272,
+      "errorOperations": 0,
+      "avgDurationMs": 113.8,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "accounting--to--astronomy-db"
+      ],
+      "exampleTraceId": "00000000000000000000000000000040",
+      "exampleSpanId": "0000000000000040",
+      "dbOperation": "SELECT"
+    },
+    {
+      "source": "service:ad",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 230,
+      "errorOperations": 2,
+      "avgDurationMs": 90.0,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "ad--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000032",
+      "exampleSpanId": "0000000000000032"
+    },
+    {
+      "source": "service:agent",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 248,
+      "errorOperations": 0,
+      "avgDurationMs": 100.2,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "agent--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000038",
+      "exampleSpanId": "0000000000000038"
+    },
+    {
+      "source": "service:cart",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 227,
+      "errorOperations": 1,
+      "avgDurationMs": 88.3,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "cart--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000031",
+      "exampleSpanId": "0000000000000031"
+    },
+    {
+      "source": "service:chatbot",
+      "target": "endpoint:agent:POST:%2Fprompt",
+      "type": "http_call",
+      "observedOperations": 209,
+      "errorOperations": 3,
+      "avgDurationMs": 78.1,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "chatbot--to--agent--post-prompt"
+      ],
+      "exampleTraceId": "0000000000000000000000000000002b",
+      "exampleSpanId": "000000000000002b"
+    },
+    {
+      "source": "service:checkout",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 221,
+      "errorOperations": 3,
+      "avgDurationMs": 84.9,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "checkout--to--flagd"
+      ],
+      "exampleTraceId": "0000000000000000000000000000002f",
+      "exampleSpanId": "000000000000002f"
+    },
+    {
+      "source": "service:email",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 242,
+      "errorOperations": 2,
+      "avgDurationMs": 96.8,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "email--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000036",
+      "exampleSpanId": "0000000000000036"
+    },
+    {
+      "source": "service:fraud-detection",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 236,
+      "errorOperations": 0,
+      "avgDurationMs": 93.4,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "fraud-detection--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000034",
+      "exampleSpanId": "0000000000000034"
+    },
+    {
+      "source": "service:frontend-proxy",
+      "target": "endpoint:frontend:GET:%2Fapi%2Fexperimental",
+      "type": "http_call",
+      "observedOperations": 269,
+      "errorOperations": 3,
+      "avgDurationMs": 112.1,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend-proxy--to--frontend"
+      ],
+      "exampleTraceId": "0000000000000000000000000000003f",
+      "exampleSpanId": "000000000000003f"
+    },
+    {
+      "source": "service:frontend-proxy",
+      "target": "service:chatbot",
+      "type": "http_call",
+      "observedOperations": 113,
+      "errorOperations": 3,
+      "avgDurationMs": 23.7,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend-proxy--to--chatbot"
+      ],
+      "exampleTraceId": "0000000000000000000000000000000b",
+      "exampleSpanId": "000000000000000b"
+    },
+    {
+      "source": "service:frontend-proxy",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 101,
+      "errorOperations": 3,
+      "avgDurationMs": 16.9,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend-proxy--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000007",
+      "exampleSpanId": "0000000000000007"
+    },
+    {
+      "source": "service:frontend-proxy",
+      "target": "service:flagd-ui",
+      "type": "http_call",
+      "observedOperations": 104,
+      "errorOperations": 0,
+      "avgDurationMs": 18.6,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend-proxy--to--flagd-ui"
+      ],
+      "exampleTraceId": "00000000000000000000000000000008",
+      "exampleSpanId": "0000000000000008"
+    },
+    {
+      "source": "service:frontend-proxy",
+      "target": "service:frontend",
+      "type": "http_call",
+      "observedOperations": 95,
+      "errorOperations": 1,
+      "avgDurationMs": 13.5,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend-proxy--to--frontend"
+      ],
+      "exampleTraceId": "00000000000000000000000000000005",
+      "exampleSpanId": "0000000000000005"
+    },
+    {
+      "source": "service:frontend-proxy",
+      "target": "service:image-provider",
+      "type": "http_call",
+      "observedOperations": 98,
+      "errorOperations": 2,
+      "avgDurationMs": 15.2,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend-proxy--to--image-provider"
+      ],
+      "exampleTraceId": "00000000000000000000000000000006",
+      "exampleSpanId": "0000000000000006"
+    },
+    {
+      "source": "service:frontend-proxy",
+      "target": "service:load-generator",
+      "type": "http_call",
+      "observedOperations": 107,
+      "errorOperations": 1,
+      "avgDurationMs": 20.3,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend-proxy--to--load-generator"
+      ],
+      "exampleTraceId": "00000000000000000000000000000009",
+      "exampleSpanId": "0000000000000009"
+    },
+    {
+      "source": "service:frontend-proxy",
+      "target": "service:telemetry-docs",
+      "type": "http_call",
+      "observedOperations": 110,
+      "errorOperations": 2,
+      "avgDurationMs": 22.0,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend-proxy--to--telemetry-docs"
+      ],
+      "exampleTraceId": "0000000000000000000000000000000a",
+      "exampleSpanId": "000000000000000a"
+    },
+    {
+      "source": "service:frontend-web",
+      "target": "service:frontend-proxy",
+      "type": "http_call",
+      "observedOperations": 83,
+      "errorOperations": 1,
+      "avgDurationMs": 6.7,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend-web--to--frontend-proxy"
+      ],
+      "exampleTraceId": "00000000000000000000000000000001",
+      "exampleSpanId": "0000000000000001"
+    },
+    {
+      "source": "service:load-generator",
+      "target": "endpoint:agent:POST:%2Fprompt",
+      "type": "http_call",
+      "observedOperations": 89,
+      "errorOperations": 3,
+      "avgDurationMs": 10.1,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "load-generator--to--agent--post-prompt"
+      ],
+      "exampleTraceId": "00000000000000000000000000000003",
+      "exampleSpanId": "0000000000000003"
+    },
+    {
+      "source": "service:load-generator",
+      "target": "endpoint:flagd:POST:%2Fofrep%2Fv1%2Fevaluate%2Fflags%2F%7Bkey%7D",
+      "type": "http_call",
+      "observedOperations": 92,
+      "errorOperations": 0,
+      "avgDurationMs": 11.8,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "load-generator--to--flagd--post-ofrep-v1-evaluate-flags-key"
+      ],
+      "exampleTraceId": "00000000000000000000000000000004",
+      "exampleSpanId": "0000000000000004"
+    },
+    {
+      "source": "service:load-generator",
+      "target": "service:frontend-proxy",
+      "type": "http_call",
+      "observedOperations": 86,
+      "errorOperations": 2,
+      "avgDurationMs": 8.4,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "load-generator--to--frontend-proxy"
+      ],
+      "exampleTraceId": "00000000000000000000000000000002",
+      "exampleSpanId": "0000000000000002"
+    },
+    {
+      "source": "service:payment",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 239,
+      "errorOperations": 1,
+      "avgDurationMs": 95.1,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "payment--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000035",
+      "exampleSpanId": "0000000000000035"
+    },
+    {
+      "source": "service:product-catalog",
+      "target": "postgres:astronomy-db:astronomy_db",
+      "type": "db_query",
+      "observedOperations": 257,
+      "errorOperations": 3,
+      "avgDurationMs": 105.3,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "product-catalog--to--astronomy-db"
+      ],
+      "exampleTraceId": "0000000000000000000000000000003b",
+      "exampleSpanId": "000000000000003b",
+      "dbOperation": "SELECT"
+    },
+    {
+      "source": "service:product-catalog",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 224,
+      "errorOperations": 0,
+      "avgDurationMs": 86.6,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "product-catalog--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000030",
+      "exampleSpanId": "0000000000000030"
+    },
+    {
+      "source": "service:recommendation",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 233,
+      "errorOperations": 3,
+      "avgDurationMs": 91.7,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "recommendation--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000033",
+      "exampleSpanId": "0000000000000033"
+    },
+    {
+      "source": "service:shipping",
+      "target": "service:flagd",
+      "type": "http_call",
+      "observedOperations": 245,
+      "errorOperations": 3,
+      "avgDurationMs": 98.5,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "shipping--to--flagd"
+      ],
+      "exampleTraceId": "00000000000000000000000000000037",
+      "exampleSpanId": "0000000000000037"
     }
   ],
   "violations": [
     {
-      "source": "endpoint:orders:POST:%2Forders",
-      "target": "kafka:shop-events:orders.debug",
-      "exampleTraceId": "00000000000000000000000000000010",
-      "exampleSpanId": "0000000000000010",
       "type": "unexpected_edge",
-      "edgeType": "publish",
-      "message": "Публикация в незадекларированный Kafka-топик."
-    },
-    {
-      "source": "endpoint:payments:POST:%2Fpayments",
-      "target": "postgres:shop-pg:orders_db",
-      "exampleTraceId": "0000000000000000000000000000000f",
-      "exampleSpanId": "000000000000000f",
-      "type": "unexpected_edge",
-      "edgeType": "db_query",
-      "message": "Чтение чужой базы не описано в CALM.",
-      "dbOperation": "SELECT"
+      "source": "endpoint:checkout:POST:%2Foteldemo.CheckoutService%2FPlaceOrder",
+      "target": "endpoint:email:POST:%2Fsend_order_confirmation",
+      "edgeType": "http_call",
+      "message": "Вызов checkout → email отсутствует в устаревшей декларации.",
+      "exampleTraceId": "00000000000000000000000000000027",
+      "exampleSpanId": "0000000000000027"
     }
   ],
   "diagnostics": {
-    "unmatchedHttpClientSpans": 1,
-    "serviceLevelOperations": 7,
+    "unmatchedHttpClientSpans": 2,
+    "serviceLevelOperations": 6157,
     "unresolvedResourceSpans": 1,
     "ignoredMessagingSpans": 0
-  }
+  },
+  "from": "2026-11-10T10:00:00Z"
 }

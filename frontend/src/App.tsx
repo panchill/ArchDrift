@@ -185,7 +185,7 @@ export default function App() {
         <a className="brand" href="./">
           <span className="brand-mark">a.</span>archdrift
           <span className="brand-separator">/</span>
-          <span className="project">demo-shop</span>
+          <span className="project">Astronomy Shop</span>
         </a>
         <span className="demo-label">
           <span /> МОК · CALM 1.2
@@ -195,7 +195,7 @@ export default function App() {
         <div className="page-heading">
           <h1>
             Архитектура <span className="heading-divider">/</span>{" "}
-            <span>demo-shop</span>
+            <span>Astronomy Shop</span>
           </h1>
           <button
             className="button"

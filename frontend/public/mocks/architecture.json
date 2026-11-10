@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-09T19:50:00Z",
+  "updatedAt": "2026-11-10T09:55:00Z",
   "model": {
     "$schema": "https://calm.finos.org/release/1.2/meta/calm.json",
     "metadata": {
@@ -8,262 +8,922 @@
         "version": 1
       }
     },
+    "unique-id": "opentelemetry-demo",
+    "name": "OpenTelemetry Astronomy Shop",
+    "description": "Full topology of open-telemetry/opentelemetry-demo in the ArchDrift profile. gRPC methods are interfaces POST /<package>.<Service>/<Method>. Not modelled: Valkey (cart store), OpenSearch, otel-collector, Jaeger, Grafana, opamp-server, external LLM, and workers (the demo sets no archdrift.worker.name).",
     "nodes": [
       {
-        "unique-id": "svc-gateway",
+        "unique-id": "frontend-web",
         "node-type": "service",
-        "name": "gateway",
-        "description": "Входная точка магазина",
+        "name": "Frontend Web",
+        "description": "Browser part of the storefront (Next.js client, OTel Web SDK)",
         "metadata": {
           "archdrift": {
-            "serviceName": "gateway"
+            "serviceName": "frontend-web"
+          }
+        }
+      },
+      {
+        "unique-id": "load-generator",
+        "node-type": "service",
+        "name": "Load Generator",
+        "description": "Locust + Playwright synthetic users",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "load-generator"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend-proxy",
+        "node-type": "service",
+        "name": "Frontend Proxy",
+        "description": "Envoy edge proxy; routes by path prefix. Envoy sets no http.route, so these interfaces document routing only",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "frontend-proxy"
           }
         },
         "interfaces": [
           {
-            "unique-id": "checkout",
+            "unique-id": "frontend-proxy--get-root",
             "metadata": {
               "archdrift": {
-                "method": "POST",
-                "route": "/checkout"
+                "method": "GET",
+                "route": "/"
               }
             }
           },
           {
-            "unique-id": "lookup",
+            "unique-id": "frontend-proxy--get-images",
             "metadata": {
               "archdrift": {
                 "method": "GET",
-                "route": "/orders/{id}"
+                "route": "/images/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--post-flagservice",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/flagservice/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--get-feature",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/feature"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--get-loadgen",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/loadgen/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--post-otlp-http",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/otlp-http/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--get-jaeger",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/jaeger/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--get-grafana",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/grafana/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--get-telemetry",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/telemetry/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--get-chatbot",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/chatbot/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--get-opamp",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/opamp/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend-proxy--get-profiles",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/profiles/"
               }
             }
           }
         ]
       },
       {
-        "unique-id": "svc-orders",
+        "unique-id": "frontend",
         "node-type": "service",
+        "name": "Frontend",
+        "description": "Next.js storefront and BFF; calls backends over gRPC and shipping over HTTP",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "frontend"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "frontend--get-root",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-cart",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/cart"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-product-productId",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/product/[productId]"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-cart-checkout-orderId",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/cart/checkout/[orderId]"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-api-cart",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/api/cart"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--post-api-cart",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/api/cart"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--delete-api-cart",
+            "metadata": {
+              "archdrift": {
+                "method": "DELETE",
+                "route": "/api/cart"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--post-api-checkout",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/api/checkout"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-api-currency",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/api/currency"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-api-data",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/api/data"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-api-products",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/api/products"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-api-products-productId",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/api/products/[productId]"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-api-recommendations",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/api/recommendations"
+              }
+            }
+          },
+          {
+            "unique-id": "frontend--get-api-shipping",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/api/shipping"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "checkout",
+        "node-type": "service",
+        "name": "Checkout",
+        "description": "Go gRPC service orchestrating order placement; publishes to Kafka topic orders",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "checkout"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "checkout--post-oteldemo-CheckoutService-PlaceOrder",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.CheckoutService/PlaceOrder"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "cart",
+        "node-type": "service",
+        "name": "Cart",
+        "description": ".NET gRPC service; cart state in Valkey (not modelled: profile allows only PostgreSQL)",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "cart"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "cart--post-oteldemo-CartService-AddItem",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.CartService/AddItem"
+              }
+            }
+          },
+          {
+            "unique-id": "cart--post-oteldemo-CartService-GetCart",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.CartService/GetCart"
+              }
+            }
+          },
+          {
+            "unique-id": "cart--post-oteldemo-CartService-EmptyCart",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.CartService/EmptyCart"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "product-catalog",
+        "node-type": "service",
+        "name": "Product Catalog",
+        "description": "Go gRPC service backed by PostgreSQL schema catalog",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "product-catalog"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "product-catalog--post-oteldemo-ProductCatalogService-ListProducts",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.ProductCatalogService/ListProducts"
+              }
+            }
+          },
+          {
+            "unique-id": "product-catalog--post-oteldemo-ProductCatalogService-GetProduct",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.ProductCatalogService/GetProduct"
+              }
+            }
+          },
+          {
+            "unique-id": "product-catalog--post-oteldemo-ProductCatalogService-SearchProducts",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.ProductCatalogService/SearchProducts"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "currency",
+        "node-type": "service",
+        "name": "Currency",
+        "description": "C++ gRPC currency conversion",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "currency"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "currency--post-oteldemo-CurrencyService-GetSupportedCurrencies",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.CurrencyService/GetSupportedCurrencies"
+              }
+            }
+          },
+          {
+            "unique-id": "currency--post-oteldemo-CurrencyService-Convert",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.CurrencyService/Convert"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "recommendation",
+        "node-type": "service",
+        "name": "Recommendation",
+        "description": "Java gRPC recommendations",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "recommendation"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "recommendation--post-oteldemo-RecommendationService-ListRecommendations",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.RecommendationService/ListRecommendations"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "ad",
+        "node-type": "service",
+        "name": "Ad",
+        "description": "Java gRPC ad service",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "ad"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "ad--post-oteldemo-AdService-GetAds",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.AdService/GetAds"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "payment",
+        "node-type": "service",
+        "name": "Payment",
+        "description": "Node.js gRPC payment service",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "payment"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "payment--post-oteldemo-PaymentService-Charge",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/oteldemo.PaymentService/Charge"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "shipping",
+        "node-type": "service",
+        "name": "Shipping",
+        "description": "Rust HTTP service (actix)",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "shipping"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "shipping--post-get-quote",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/get-quote"
+              }
+            }
+          },
+          {
+            "unique-id": "shipping--post-ship-order",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/ship-order"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "quote",
+        "node-type": "service",
+        "name": "Quote",
+        "description": "PHP HTTP shipping quote service",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "quote"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "quote--post-getquote",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/getquote"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "email",
+        "node-type": "service",
+        "name": "Email",
+        "description": "Ruby HTTP order confirmation email service",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "email"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "email--post-send_order_confirmation",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/send_order_confirmation"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "flagd",
+        "node-type": "service",
+        "name": "flagd",
+        "description": "Feature flag daemon: gRPC/Connect evaluation on 8013, OFREP HTTP on 8016",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "flagd"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "flagd--post-flagd-evaluation-v1-Service-ResolveBoolean",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/flagd.evaluation.v1.Service/ResolveBoolean"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd--post-flagd-evaluation-v1-Service-ResolveString",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/flagd.evaluation.v1.Service/ResolveString"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd--post-flagd-evaluation-v1-Service-ResolveInt",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/flagd.evaluation.v1.Service/ResolveInt"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd--post-flagd-evaluation-v1-Service-ResolveFloat",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/flagd.evaluation.v1.Service/ResolveFloat"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd--post-flagd-evaluation-v1-Service-ResolveObject",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/flagd.evaluation.v1.Service/ResolveObject"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd--post-flagd-evaluation-v1-Service-ResolveAll",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/flagd.evaluation.v1.Service/ResolveAll"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd--post-flagd-evaluation-v1-Service-EventStream",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/flagd.evaluation.v1.Service/EventStream"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd--post-ofrep-v1-evaluate-flags",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/ofrep/v1/evaluate/flags"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd--post-ofrep-v1-evaluate-flags-key",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/ofrep/v1/evaluate/flags/{key}"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "flagd-ui",
+        "node-type": "service",
+        "name": "flagd UI",
+        "description": "Phoenix UI editing flag file shared with flagd (no network calls to flagd)",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "flagd-ui"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "flagd-ui--get-root",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd-ui--get-advanced",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/advanced"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd-ui--get-scheduler",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/scheduler"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd-ui--get-api-read",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/api/read"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd-ui--get-api-read-file",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/api/read-file"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd-ui--post-api-write",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/api/write"
+              }
+            }
+          },
+          {
+            "unique-id": "flagd-ui--post-api-write-to-file",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/api/write-to-file"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "image-provider",
+        "node-type": "service",
+        "name": "Image Provider",
+        "description": "nginx serving product images",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "image-provider"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "image-provider--get-products-file",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/products/{file}"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "telemetry-docs",
+        "node-type": "service",
+        "name": "Telemetry Docs",
+        "description": "nginx serving generated telemetry schema docs",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "telemetry-docs"
+          }
+        }
+      },
+      {
+        "unique-id": "accounting",
+        "node-type": "service",
+        "name": "Accounting",
+        "description": ".NET Kafka consumer writing orders to PostgreSQL schema accounting",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "accounting"
+          }
+        }
+      },
+      {
+        "unique-id": "fraud-detection",
+        "node-type": "service",
+        "name": "Fraud Detection",
+        "description": "Kotlin Kafka consumer",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "fraud-detection"
+          }
+        }
+      },
+      {
+        "unique-id": "agent",
+        "node-type": "service",
+        "name": "Agent",
+        "description": "Python FastAPI shopping agent",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "agent"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "agent--post-prompt",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/prompt"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "mcp",
+        "node-type": "service",
+        "name": "MCP Server",
+        "description": "FastMCP server exposing shop tools",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "mcp"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "mcp--post-mcp",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/mcp"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "chatbot",
+        "node-type": "service",
+        "name": "Chatbot",
+        "description": "Gradio chat UI in front of the agent",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "chatbot"
+          }
+        }
+      },
+      {
+        "unique-id": "astronomy-db",
+        "node-type": "database",
+        "name": "astronomy_db",
+        "description": "PostgreSQL (schemas catalog, accounting)",
+        "metadata": {
+          "archdrift": {
+            "instance": "astronomy-db",
+            "database": "astronomy_db"
+          }
+        }
+      },
+      {
+        "unique-id": "orders-topic",
+        "node-type": "kafka-topic",
         "name": "orders",
-        "description": "Заказы и их жизненный цикл",
+        "description": "Placed orders",
         "metadata": {
           "archdrift": {
-            "serviceName": "orders"
-          }
-        },
-        "interfaces": [
-          {
-            "unique-id": "create",
-            "metadata": {
-              "archdrift": {
-                "method": "POST",
-                "route": "/orders"
-              }
-            }
-          },
-          {
-            "unique-id": "lookup",
-            "metadata": {
-              "archdrift": {
-                "method": "GET",
-                "route": "/orders/{id}"
-              }
-            }
-          },
-          {
-            "unique-id": "cancel",
-            "metadata": {
-              "archdrift": {
-                "method": "POST",
-                "route": "/orders/{id}/cancel"
-              }
-            }
-          }
-        ]
-      },
-      {
-        "unique-id": "svc-payments",
-        "node-type": "service",
-        "name": "payments",
-        "description": "Платежи",
-        "metadata": {
-          "archdrift": {
-            "serviceName": "payments"
-          }
-        },
-        "interfaces": [
-          {
-            "unique-id": "charge",
-            "metadata": {
-              "archdrift": {
-                "method": "POST",
-                "route": "/payments"
-              }
-            }
-          },
-          {
-            "unique-id": "lookup",
-            "metadata": {
-              "archdrift": {
-                "method": "GET",
-                "route": "/payments/{id}"
-              }
-            }
-          }
-        ]
-      },
-      {
-        "unique-id": "svc-inventory",
-        "node-type": "service",
-        "name": "inventory",
-        "description": "Остатки и резервы",
-        "metadata": {
-          "archdrift": {
-            "serviceName": "inventory"
-          }
-        },
-        "interfaces": [
-          {
-            "unique-id": "reserve",
-            "metadata": {
-              "archdrift": {
-                "method": "POST",
-                "route": "/reservations"
-              }
-            }
-          }
-        ]
-      },
-      {
-        "unique-id": "svc-notifications",
-        "node-type": "service",
-        "name": "notifications",
-        "description": "Уведомления покупателям",
-        "metadata": {
-          "archdrift": {
-            "serviceName": "notifications"
-          }
-        }
-      },
-      {
-        "unique-id": "worker-send-email",
-        "node-type": "worker",
-        "name": "send-email",
-        "description": "Обработчик Kafka",
-        "metadata": {
-          "archdrift": {
-            "workerName": "send-email"
-          }
-        }
-      },
-      {
-        "unique-id": "worker-release-reservation",
-        "node-type": "worker",
-        "name": "release-reservation",
-        "description": "Обработчик Kafka",
-        "metadata": {
-          "archdrift": {
-            "workerName": "release-reservation"
-          }
-        }
-      },
-      {
-        "unique-id": "db-orders_db",
-        "node-type": "database",
-        "name": "orders_db",
-        "description": "PostgreSQL · shop-pg",
-        "metadata": {
-          "archdrift": {
-            "instance": "shop-pg",
-            "database": "orders_db"
-          }
-        }
-      },
-      {
-        "unique-id": "db-payments_db",
-        "node-type": "database",
-        "name": "payments_db",
-        "description": "PostgreSQL · shop-pg",
-        "metadata": {
-          "archdrift": {
-            "instance": "shop-pg",
-            "database": "payments_db"
-          }
-        }
-      },
-      {
-        "unique-id": "db-inventory_db",
-        "node-type": "database",
-        "name": "inventory_db",
-        "description": "PostgreSQL · shop-pg",
-        "metadata": {
-          "archdrift": {
-            "instance": "shop-pg",
-            "database": "inventory_db"
-          }
-        }
-      },
-      {
-        "unique-id": "topic-orders.created",
-        "node-type": "kafka-topic",
-        "name": "orders.created",
-        "description": "Kafka · shop-events",
-        "metadata": {
-          "archdrift": {
-            "cluster": "shop-events",
-            "topic": "orders.created"
-          }
-        }
-      },
-      {
-        "unique-id": "topic-payments.completed",
-        "node-type": "kafka-topic",
-        "name": "payments.completed",
-        "description": "Kafka · shop-events",
-        "metadata": {
-          "archdrift": {
-            "cluster": "shop-events",
-            "topic": "payments.completed"
+            "cluster": "kafka",
+            "topic": "orders"
           }
         }
       }
     ],
     "relationships": [
       {
-        "unique-id": "owns-send-email",
-        "relationship-type": {
-          "composed-of": {
-            "container": "svc-notifications",
-            "nodes": [
-              "worker-send-email"
-            ]
-          }
-        }
-      },
-      {
-        "unique-id": "owns-release-reservation",
-        "relationship-type": {
-          "composed-of": {
-            "container": "svc-inventory",
-            "nodes": [
-              "worker-release-reservation"
-            ]
-          }
-        }
-      },
-      {
-        "unique-id": "rel-1",
+        "unique-id": "frontend-web--to--frontend-proxy",
+        "description": "Loads pages, calls /api/*, images, flags and OTLP through",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "svc-gateway",
-              "interfaces": [
-                "checkout"
-              ]
+              "node": "frontend-web"
             },
             "destination": {
-              "node": "svc-orders",
+              "node": "frontend-proxy"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "load-generator--to--frontend-proxy",
+        "description": "Generates shopper traffic through",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "load-generator"
+            },
+            "destination": {
+              "node": "frontend-proxy"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "load-generator--to--agent--post-prompt",
+        "description": "Sends synthetic prompts to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "load-generator"
+            },
+            "destination": {
+              "node": "agent",
               "interfaces": [
-                "create"
+                "agent--post-prompt"
               ]
             }
           }
@@ -275,19 +935,17 @@
         }
       },
       {
-        "unique-id": "rel-2",
+        "unique-id": "load-generator--to--flagd--post-ofrep-v1-evaluate-flags-key",
+        "description": "Evaluates feature flags via OFREP in",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "svc-gateway",
-              "interfaces": [
-                "lookup"
-              ]
+              "node": "load-generator"
             },
             "destination": {
-              "node": "svc-orders",
+              "node": "flagd",
               "interfaces": [
-                "lookup"
+                "flagd--post-ofrep-v1-evaluate-flags-key"
               ]
             }
           }
@@ -299,19 +957,153 @@
         }
       },
       {
-        "unique-id": "rel-3",
+        "unique-id": "frontend-proxy--to--frontend",
+        "description": "Routes requests by path prefix to",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "svc-orders",
+              "node": "frontend-proxy"
+            },
+            "destination": {
+              "node": "frontend"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend-proxy--to--image-provider",
+        "description": "Routes requests by path prefix to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend-proxy"
+            },
+            "destination": {
+              "node": "image-provider"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend-proxy--to--flagd",
+        "description": "Routes requests by path prefix to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend-proxy"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend-proxy--to--flagd-ui",
+        "description": "Routes requests by path prefix to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend-proxy"
+            },
+            "destination": {
+              "node": "flagd-ui"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend-proxy--to--load-generator",
+        "description": "Routes requests by path prefix to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend-proxy"
+            },
+            "destination": {
+              "node": "load-generator"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend-proxy--to--telemetry-docs",
+        "description": "Routes requests by path prefix to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend-proxy"
+            },
+            "destination": {
+              "node": "telemetry-docs"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend-proxy--to--chatbot",
+        "description": "Routes requests by path prefix to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend-proxy"
+            },
+            "destination": {
+              "node": "chatbot"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-cart--to--cart--post-oteldemo-CartService-GetCart",
+        "description": "Reads cart and enriches items via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
               "interfaces": [
-                "create"
+                "frontend--get-api-cart"
               ]
             },
             "destination": {
-              "node": "svc-payments",
+              "node": "cart",
               "interfaces": [
-                "charge"
+                "cart--post-oteldemo-CartService-GetCart"
               ]
             }
           }
@@ -323,19 +1115,20 @@
         }
       },
       {
-        "unique-id": "rel-4",
+        "unique-id": "frontend--get-api-cart--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct",
+        "description": "Reads cart and enriches items via",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "svc-orders",
+              "node": "frontend",
               "interfaces": [
-                "create"
+                "frontend--get-api-cart"
               ]
             },
             "destination": {
-              "node": "svc-inventory",
+              "node": "product-catalog",
               "interfaces": [
-                "reserve"
+                "product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
               ]
             }
           }
@@ -347,101 +1140,643 @@
         }
       },
       {
-        "unique-id": "rel-5",
+        "unique-id": "frontend--get-api-cart--to--currency--post-oteldemo-CurrencyService-Convert",
+        "description": "Reads cart and enriches items via",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "svc-orders",
+              "node": "frontend",
               "interfaces": [
-                "create"
+                "frontend--get-api-cart"
               ]
             },
             "destination": {
-              "node": "db-orders_db"
+              "node": "currency",
+              "interfaces": [
+                "currency--post-oteldemo-CurrencyService-Convert"
+              ]
             }
           }
         },
         "metadata": {
           "archdrift": {
-            "type": "db_query"
+            "type": "http_call"
           }
         }
       },
       {
-        "unique-id": "rel-6",
+        "unique-id": "frontend--post-api-cart--to--cart--post-oteldemo-CartService-AddItem",
+        "description": "Adds item to cart in",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "svc-orders",
+              "node": "frontend",
               "interfaces": [
-                "lookup"
+                "frontend--post-api-cart"
               ]
             },
             "destination": {
-              "node": "db-orders_db"
+              "node": "cart",
+              "interfaces": [
+                "cart--post-oteldemo-CartService-AddItem"
+              ]
             }
           }
         },
         "metadata": {
           "archdrift": {
-            "type": "db_query"
+            "type": "http_call"
           }
         }
       },
       {
-        "unique-id": "rel-7",
+        "unique-id": "frontend--post-api-cart--to--cart--post-oteldemo-CartService-GetCart",
+        "description": "Adds item to cart in",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "svc-payments",
+              "node": "frontend",
               "interfaces": [
-                "charge"
+                "frontend--post-api-cart"
               ]
             },
             "destination": {
-              "node": "db-payments_db"
+              "node": "cart",
+              "interfaces": [
+                "cart--post-oteldemo-CartService-GetCart"
+              ]
             }
           }
         },
         "metadata": {
           "archdrift": {
-            "type": "db_query"
+            "type": "http_call"
           }
         }
       },
       {
-        "unique-id": "rel-8",
+        "unique-id": "frontend--delete-api-cart--to--cart--post-oteldemo-CartService-EmptyCart",
+        "description": "Empties cart in",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "svc-inventory",
+              "node": "frontend",
               "interfaces": [
-                "reserve"
+                "frontend--delete-api-cart"
               ]
             },
             "destination": {
-              "node": "db-inventory_db"
+              "node": "cart",
+              "interfaces": [
+                "cart--post-oteldemo-CartService-EmptyCart"
+              ]
             }
           }
         },
         "metadata": {
           "archdrift": {
-            "type": "db_query"
+            "type": "http_call"
           }
         }
       },
       {
-        "unique-id": "rel-9",
+        "unique-id": "frontend--post-api-checkout--to--checkout--post-oteldemo-CheckoutService-PlaceOrder",
+        "description": "Places order and enriches result via",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "svc-orders",
+              "node": "frontend",
               "interfaces": [
-                "create"
+                "frontend--post-api-checkout"
               ]
             },
             "destination": {
-              "node": "topic-orders.created"
+              "node": "checkout",
+              "interfaces": [
+                "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--post-api-checkout--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct",
+        "description": "Places order and enriches result via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--post-api-checkout"
+              ]
+            },
+            "destination": {
+              "node": "product-catalog",
+              "interfaces": [
+                "product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--post-api-checkout--to--currency--post-oteldemo-CurrencyService-Convert",
+        "description": "Places order and enriches result via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--post-api-checkout"
+              ]
+            },
+            "destination": {
+              "node": "currency",
+              "interfaces": [
+                "currency--post-oteldemo-CurrencyService-Convert"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-currency--to--currency--post-oteldemo-CurrencyService-GetSupportedCurrencies",
+        "description": "Lists currencies from",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-currency"
+              ]
+            },
+            "destination": {
+              "node": "currency",
+              "interfaces": [
+                "currency--post-oteldemo-CurrencyService-GetSupportedCurrencies"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-data--to--ad--post-oteldemo-AdService-GetAds",
+        "description": "Fetches ads from",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-data"
+              ]
+            },
+            "destination": {
+              "node": "ad",
+              "interfaces": [
+                "ad--post-oteldemo-AdService-GetAds"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-products--to--product-catalog--post-oteldemo-ProductCatalogService-ListProducts",
+        "description": "Lists products and converts prices via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-products"
+              ]
+            },
+            "destination": {
+              "node": "product-catalog",
+              "interfaces": [
+                "product-catalog--post-oteldemo-ProductCatalogService-ListProducts"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-products--to--currency--post-oteldemo-CurrencyService-Convert",
+        "description": "Lists products and converts prices via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-products"
+              ]
+            },
+            "destination": {
+              "node": "currency",
+              "interfaces": [
+                "currency--post-oteldemo-CurrencyService-Convert"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-products-productId--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct",
+        "description": "Reads product and converts price via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-products-productId"
+              ]
+            },
+            "destination": {
+              "node": "product-catalog",
+              "interfaces": [
+                "product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-products-productId--to--currency--post-oteldemo-CurrencyService-Convert",
+        "description": "Reads product and converts price via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-products-productId"
+              ]
+            },
+            "destination": {
+              "node": "currency",
+              "interfaces": [
+                "currency--post-oteldemo-CurrencyService-Convert"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-recommendations--to--recommendation--post-oteldemo-RecommendationService-ListRecommendations",
+        "description": "Gets recommendations and product details from",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-recommendations"
+              ]
+            },
+            "destination": {
+              "node": "recommendation",
+              "interfaces": [
+                "recommendation--post-oteldemo-RecommendationService-ListRecommendations"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-recommendations--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct",
+        "description": "Gets recommendations and product details from",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-recommendations"
+              ]
+            },
+            "destination": {
+              "node": "product-catalog",
+              "interfaces": [
+                "product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-recommendations--to--currency--post-oteldemo-CurrencyService-Convert",
+        "description": "Gets recommendations and product details from",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-recommendations"
+              ]
+            },
+            "destination": {
+              "node": "currency",
+              "interfaces": [
+                "currency--post-oteldemo-CurrencyService-Convert"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-shipping--to--shipping--post-get-quote",
+        "description": "Gets shipping quote and converts cost via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-shipping"
+              ]
+            },
+            "destination": {
+              "node": "shipping",
+              "interfaces": [
+                "shipping--post-get-quote"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "frontend--get-api-shipping--to--currency--post-oteldemo-CurrencyService-Convert",
+        "description": "Gets shipping quote and converts cost via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "frontend",
+              "interfaces": [
+                "frontend--get-api-shipping"
+              ]
+            },
+            "destination": {
+              "node": "currency",
+              "interfaces": [
+                "currency--post-oteldemo-CurrencyService-Convert"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--cart--post-oteldemo-CartService-GetCart",
+        "description": "Reads user cart from",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "checkout",
+              "interfaces": [
+                "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+              ]
+            },
+            "destination": {
+              "node": "cart",
+              "interfaces": [
+                "cart--post-oteldemo-CartService-GetCart"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--cart--post-oteldemo-CartService-EmptyCart",
+        "description": "Empties user cart in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "checkout",
+              "interfaces": [
+                "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+              ]
+            },
+            "destination": {
+              "node": "cart",
+              "interfaces": [
+                "cart--post-oteldemo-CartService-EmptyCart"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--product-catalog--post-oteldemo-ProductCatalogService-GetProduct",
+        "description": "Reads ordered products from",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "checkout",
+              "interfaces": [
+                "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+              ]
+            },
+            "destination": {
+              "node": "product-catalog",
+              "interfaces": [
+                "product-catalog--post-oteldemo-ProductCatalogService-GetProduct"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--currency--post-oteldemo-CurrencyService-Convert",
+        "description": "Converts prices via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "checkout",
+              "interfaces": [
+                "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+              ]
+            },
+            "destination": {
+              "node": "currency",
+              "interfaces": [
+                "currency--post-oteldemo-CurrencyService-Convert"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--payment--post-oteldemo-PaymentService-Charge",
+        "description": "Charges the card via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "checkout",
+              "interfaces": [
+                "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+              ]
+            },
+            "destination": {
+              "node": "payment",
+              "interfaces": [
+                "payment--post-oteldemo-PaymentService-Charge"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--shipping--post-get-quote",
+        "description": "Requests shipping quote from",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "checkout",
+              "interfaces": [
+                "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+              ]
+            },
+            "destination": {
+              "node": "shipping",
+              "interfaces": [
+                "shipping--post-get-quote"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--shipping--post-ship-order",
+        "description": "Ships the order via",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "checkout",
+              "interfaces": [
+                "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+              ]
+            },
+            "destination": {
+              "node": "shipping",
+              "interfaces": [
+                "shipping--post-ship-order"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "checkout--post-oteldemo-CheckoutService-PlaceOrder--to--orders-topic",
+        "description": "Publishes placed order to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "checkout",
+              "interfaces": [
+                "checkout--post-oteldemo-CheckoutService-PlaceOrder"
+              ]
+            },
+            "destination": {
+              "node": "orders-topic"
             }
           }
         },
@@ -452,53 +1787,346 @@
         }
       },
       {
-        "unique-id": "rel-10",
+        "unique-id": "recommendation--post-oteldemo-RecommendationService-ListRecommendations--to--product-catalog--post-oteldemo-ProductCatalogService-ListProducts",
+        "description": "Reads product list from",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "topic-orders.created"
-            },
-            "destination": {
-              "node": "worker-send-email"
-            }
-          }
-        },
-        "metadata": {
-          "archdrift": {
-            "type": "consume"
-          }
-        }
-      },
-      {
-        "unique-id": "rel-11",
-        "relationship-type": {
-          "connects": {
-            "source": {
-              "node": "svc-payments",
+              "node": "recommendation",
               "interfaces": [
-                "charge"
+                "recommendation--post-oteldemo-RecommendationService-ListRecommendations"
               ]
             },
             "destination": {
-              "node": "topic-payments.completed"
+              "node": "product-catalog",
+              "interfaces": [
+                "product-catalog--post-oteldemo-ProductCatalogService-ListProducts"
+              ]
             }
           }
         },
         "metadata": {
           "archdrift": {
-            "type": "publish"
+            "type": "http_call"
           }
         }
       },
       {
-        "unique-id": "rel-12",
+        "unique-id": "shipping--post-get-quote--to--quote--post-getquote",
+        "description": "Calculates quote via",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "topic-payments.completed"
+              "node": "shipping",
+              "interfaces": [
+                "shipping--post-get-quote"
+              ]
             },
             "destination": {
-              "node": "worker-release-reservation"
+              "node": "quote",
+              "interfaces": [
+                "quote--post-getquote"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "chatbot--to--agent--post-prompt",
+        "description": "Forwards user chat to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "chatbot"
+            },
+            "destination": {
+              "node": "agent",
+              "interfaces": [
+                "agent--post-prompt"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "agent--post-prompt--to--mcp--post-mcp",
+        "description": "Calls shop tools via (when MCP_ENABLED)",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "agent",
+              "interfaces": [
+                "agent--post-prompt"
+              ]
+            },
+            "destination": {
+              "node": "mcp",
+              "interfaces": [
+                "mcp--post-mcp"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "agent--post-prompt--to--frontend",
+        "description": "Calls shop /api/* tools directly on",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "agent",
+              "interfaces": [
+                "agent--post-prompt"
+              ]
+            },
+            "destination": {
+              "node": "frontend"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "mcp--post-mcp--to--frontend",
+        "description": "Calls shop /api/* on",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "mcp",
+              "interfaces": [
+                "mcp--post-mcp"
+              ]
+            },
+            "destination": {
+              "node": "frontend"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "checkout--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "checkout"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "product-catalog--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "product-catalog"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "cart--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "cart"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "ad--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "ad"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "recommendation--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "recommendation"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "fraud-detection--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "fraud-detection"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "payment--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "payment"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "email--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "email"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "shipping--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "shipping"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "agent--to--flagd",
+        "description": "Evaluates feature flags over gRPC in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "agent"
+            },
+            "destination": {
+              "node": "flagd"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "orders-topic--to--accounting",
+        "description": "Delivers orders to",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "orders-topic"
+            },
+            "destination": {
+              "node": "accounting"
             }
           }
         },
@@ -509,14 +2137,53 @@
         }
       },
       {
-        "unique-id": "rel-13",
+        "unique-id": "orders-topic--to--fraud-detection",
+        "description": "Delivers orders to",
         "relationship-type": {
           "connects": {
             "source": {
-              "node": "worker-release-reservation"
+              "node": "orders-topic"
             },
             "destination": {
-              "node": "db-inventory_db"
+              "node": "fraud-detection"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "consume"
+          }
+        }
+      },
+      {
+        "unique-id": "product-catalog--to--astronomy-db",
+        "description": "Reads products from catalog schema in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "product-catalog"
+            },
+            "destination": {
+              "node": "astronomy-db"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "db_query"
+          }
+        }
+      },
+      {
+        "unique-id": "accounting--to--astronomy-db",
+        "description": "Writes orders to accounting schema in",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "accounting"
+            },
+            "destination": {
+              "node": "astronomy-db"
             }
           }
         },

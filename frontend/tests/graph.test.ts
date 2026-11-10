@@ -10,41 +10,44 @@ const analysis = fixture as Analysis;
 describe("graph transformation", () => {
   it("keeps all detailed nodes, typed operations and canonical identities", () => {
     const graph = buildGraph(analysis, "details");
-    expect(graph.nodes).toHaveLength(21);
-    expect(graph.edges).toHaveLength(17);
-    expect(new Set(graphElements(graph).map((e) => e.data.id)).size).toBe(38);
+    expect(graph.nodes).toHaveLength(87);
+    expect(graph.edges).toHaveLength(64);
+    expect(new Set(graphElements(graph).map((e) => e.data.id)).size).toBe(151);
     const db = graph.edges.filter(
       (e) =>
-        e.source.includes("POST:%2Forders") &&
-        e.target === "postgres:shop-pg:orders_db",
+        e.source === "service:accounting" &&
+        e.target === "postgres:astronomy-db:astronomy_db",
     );
     expect(db.map((e) => e.dbOperation).sort()).toEqual(["INSERT", "SELECT"]);
   });
-  it("collapses endpoints/workers while retaining resources and unknown topics", () => {
+  it("collapses Demo endpoints while retaining PostgreSQL and Kafka", () => {
     const graph = buildGraph(analysis, "services");
-    expect(graph.nodes).toHaveLength(11);
+    expect(graph.nodes).toHaveLength(25);
     expect(graph.nodes.some((n) => "parentId" in n.node)).toBe(false);
     expect(
-      graph.nodes.find((n) => n.node.id === "kafka:shop-events:orders.debug")
-        ?.known,
+      buildGraph(analysis, "details").nodes.find(
+        (n) => n.node.id === "endpoint:frontend:GET:%2Fapi%2Fexperimental",
+      )?.known,
     ).toBe(false);
     expect(
       graph.edges.some(
         (e) =>
-          e.source === "kafka:shop-events:orders.created" &&
-          e.target === "service:notifications",
+          e.source === "kafka:kafka:orders" &&
+          e.target === "service:accounting",
       ),
     ).toBe(true);
   });
   it("weights latency by operation counts, combines errors, and preserves original members", () => {
     const graph = buildGraph(analysis, "services");
     const gateway = graph.edges.find(
-      (e) => e.source === "service:gateway" && e.target === "service:orders",
+      (e) =>
+        e.source === "service:frontend" &&
+        e.target === "service:product-catalog",
     )!;
-    expect(gateway.observedOperations).toBe(222);
-    expect(gateway.avgDurationMs).toBeCloseTo((128 * 38 + 94 * 12) / 222);
-    expect(gateway.members).toHaveLength(2);
-    expect(gateway.matchedRelationshipIds).toHaveLength(2);
+    expect(gateway.observedOperations).toBe(724);
+    expect(gateway.avgDurationMs).toBeCloseTo(42.67237569060774);
+    expect(gateway.members).toHaveLength(5);
+    expect(gateway.matchedRelationshipIds).toHaveLength(5);
   });
   it("keeps a minority violation visible and uses its evidence in the summary", () => {
     const base = analysis.edges.find((e) => e.status === "declared")!;
@@ -69,7 +72,7 @@ describe("graph transformation", () => {
   });
   it("does not paint an ambiguous child green after collapsing", () => {
     const edge = buildGraph(analysis, "services").edges.find(
-      (e) => e.source === "service:orders" && e.target === "service:payments",
+      (e) => e.source === "service:checkout" && e.target === "service:payment",
     )!;
     expect(edge.status).toBe("indeterminate");
     expect(edge.statuses).toEqual({
@@ -80,7 +83,7 @@ describe("graph transformation", () => {
   });
   it("filters source edges before aggregation and retains compound parents", () => {
     const graph = buildGraph(analysis, "details", "unexpected");
-    expect(graph.edges).toHaveLength(2);
+    expect(graph.edges).toHaveLength(1);
     expect(
       graph.edges.every((e) =>
         e.members.every((m) => m.status === "unexpected"),
@@ -95,12 +98,19 @@ describe("graph transformation", () => {
     cy.destroy();
   });
   it("finds endpoints while in service view and keeps adjacent resources", () => {
-    const graph = buildGraph(analysis, "services", "all", " /reservations ");
-    expect(graph.nodes.some((n) => n.node.id === "service:inventory")).toBe(
-      true,
+    const graph = buildGraph(
+      analysis,
+      "services",
+      "all",
+      " ProductCatalogService ",
     );
     expect(
-      graph.nodes.some((n) => n.node.id === "postgres:shop-pg:inventory_db"),
+      graph.nodes.some((n) => n.node.id === "service:product-catalog"),
+    ).toBe(true);
+    expect(
+      graph.nodes.some(
+        (n) => n.node.id === "postgres:astronomy-db:astronomy_db",
+      ),
     ).toBe(true);
     expect(buildGraph(analysis, "details", "all", "does-not-exist")).toEqual({
       nodes: [],
@@ -110,7 +120,7 @@ describe("graph transformation", () => {
   it("never mutates the API snapshot across views or filters", () => {
     const before = JSON.stringify(analysis);
     buildGraph(analysis, "services");
-    buildGraph(analysis, "details", "unexpected", "payments");
+    buildGraph(analysis, "details", "unexpected", "payment");
     expect(JSON.stringify(analysis)).toBe(before);
   });
   it("compares observation timestamps as instants, including timezone offsets", () => {
@@ -134,8 +144,8 @@ describe("graph transformation", () => {
     const base = analysis.edges[0];
     const self = {
       ...base,
-      source: "service:orders",
-      target: "service:orders",
+      source: "service:checkout",
+      target: "service:checkout",
     };
     expect(
       buildGraph({ ...analysis, edges: [self] }, "services").edges,
@@ -170,9 +180,13 @@ describe("Cytoscape integration", () => {
       }
       const box = cy.elements().boundingBox();
       expect(box.w).toBeLessThan(1500);
-      expect(box.h).toBeLessThan(650);
-      const laptopFit = Math.min((900 - 72) / box.w, (600 - 72) / box.h);
-      expect(laptopFit).toBeGreaterThan(0.55);
+      expect(box.h).toBeLessThan(view === "services" ? 700 : 2600);
+      const focus =
+        view === "details"
+          ? cy.edges(".unexpected").connectedNodes().boundingBox()
+          : box;
+      const laptopFit = Math.min((900 - 128) / focus.w, (540 - 128) / focus.h);
+      expect(laptopFit).toBeGreaterThan(view === "details" ? 1 : 0.7);
       cy.destroy();
     },
   );
@@ -220,8 +234,8 @@ describe("Cytoscape integration", () => {
     const graph = buildGraph(analysis, "services");
     graph.edges.push({
       ...graph.edges[0],
-      source: "service:payments",
-      target: "service:orders",
+      source: "service:payment",
+      target: "service:checkout",
       type: "http_call",
     });
     const positions = [...architecturePositions(graph).values()];
@@ -257,7 +271,7 @@ describe("Cytoscape integration", () => {
         expect(edge.source().length).toBe(1);
         expect(edge.target().length).toBe(1);
       });
-      expect(cy.edges(".unexpected").length).toBe(2);
+      expect(cy.edges(".unexpected").length).toBe(1);
       cy.destroy();
       expect(cy.destroyed()).toBe(true);
     },
