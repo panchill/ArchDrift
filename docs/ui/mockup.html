@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArchDrift UI mockup</title>
+<!-- Статичный макет целевого UI (docs/frontend-ui.md). Данные — текущий мок demo-shop. Не production-код. -->
+<style>
+  :root {
+    --bg: #0b0a10; --canvas: #0e0d14; --panel: #121118; --card: #17161f; --card-2: #1d1c27;
+    --border: #2b2935; --border-2: #3a3846; --text: #ecebf3; --muted: #9a97aa; --dim: #66637a;
+    --accent: #a78bfa; --ok: #46c37b; --red: #ff5a5f; --amber: #f5a524; --edge: #4f4c5e;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", "SFMono-Regular", Consolas, "DejaVu Sans Mono", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.4 var(--sans); display: flex; flex-direction: column; }
+  button { font: inherit; color: inherit; }
+
+  /* Шапка */
+  header { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 20px; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+  .logo i { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #a78bfa, #6d5df6); display: grid; place-items: center; font-style: normal; font-weight: 800; color: #fff; }
+  .crumb { color: var(--dim); }
+  .project { font-weight: 600; }
+  .chip { font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+  .spacer { flex: 1; }
+  .live { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .live b { color: var(--text); font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 rgba(70,195,123,.6); animation: pulse 1.8s infinite; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 8px rgba(70,195,123,0); } 100% { box-shadow: 0 0 0 0 rgba(70,195,123,0); } }
+  .seg { display: inline-flex; background: var(--card); border: 1px solid var(--border); border-radius: 9px; padding: 3px; gap: 2px; }
+  .seg button { border: 0; background: none; padding: 5px 11px; border-radius: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  .seg button.on { background: var(--card-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border-2); }
+  .iconbtn { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--card); display: grid; place-items: center; color: var(--muted); }
+
+  /* Основная область */
+  main { flex: 1; display: grid; grid-template-columns: 1fr 384px; min-height: 0; }
+  .canvas { position: relative; background-color: var(--canvas); background-image: radial-gradient(#25232f 1px, transparent 1px); background-size: 22px 22px; overflow: hidden; }
+  .canvas svg.graph { position: absolute; inset: 64px 16px 64px 16px; width: calc(100% - 32px); height: calc(100% - 128px); }
+  .overlay { position: absolute; display: flex; align-items: center; gap: 8px; }
+  .tl { top: 14px; left: 16px; }
+  .tr { top: 14px; right: 16px; }
+  .bl { bottom: 14px; left: 16px; }
+  .bc { bottom: 18px; left: 50%; transform: translateX(-50%); }
+  .br { bottom: 14px; right: 16px; }
+  .search { width: 240px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--card); color: var(--dim); font-size: 13px; display: flex; align-items: center; gap: 8px; padding: 0 10px; }
+  .search kbd { margin-left: auto; font: 11px var(--mono); color: var(--dim); border: 1px solid var(--border-2); border-radius: 5px; padding: 1px 5px; }
+  .toggle { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--card); font-size: 13px; color: var(--muted); }
+  .sw { width: 28px; height: 16px; border-radius: 99px; background: var(--border-2); position: relative; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
+  .kpi { display: flex; gap: 8px; }
+  .kpi div { height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 9px; background: var(--card); border: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+  .kpi b { color: var(--text); font-weight: 600; }
+  .kpi .bad { border-color: rgba(255,90,95,.45); background: rgba(255,90,95,.10); color: #ffb4b6; }
+  .kpi .bad b { color: var(--red); }
+  .zoom { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .zoom span { height: 34px; min-width: 34px; display: grid; place-items: center; padding: 0 10px; font-size: 13px; color: var(--muted); border-right: 1px solid var(--border); }
+  .zoom span:last-child { border-right: 0; }
+  .legend { display: flex; gap: 16px; align-items: center; padding: 8px 14px; border-radius: 999px; background: rgba(23,22,31,.9); border: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .minimap { width: 168px; height: 92px; border-radius: 10px; background: rgba(23,22,31,.9); border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .hint { position: absolute; bottom: 116px; right: 16px; font-size: 11px; color: var(--dim); }
+
+  /* Карточки узлов (внутри SVG через foreignObject) */
+  .node { width: 100%; height: 100%; border-radius: 12px; background: var(--card); border: 1px solid var(--border); box-shadow: 0 6px 18px rgba(0,0,0,.35); padding: 11px 13px; display: flex; flex-direction: column; justify-content: space-between; }
+  .node.warn { border-color: rgba(255,90,95,.55); box-shadow: 0 0 0 1px rgba(255,90,95,.18), 0 6px 18px rgba(0,0,0,.35); }
+  .node .t { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 15px; }
+  .ico { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; flex: none; }
+  .ico.svc { background: rgba(167,139,250,.16); color: var(--accent); }
+  .node .s { font-size: 12px; color: var(--dim); margin-left: 31px; margin-top: -4px; }
+  .node .st { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .node .st.ok::before { content: "✓"; width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--ok); color: var(--ok); font-size: 9px; display: grid; place-items: center; }
+  .node .st.bad { color: #ff9ea1; }
+  .node .st.bad::before { content: "!"; width: 15px; height: 15px; border-radius: 50%; background: var(--red); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+  .node .st.amb { color: #f7c46b; }
+  .node .st.amb::before { content: "?"; width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--amber); color: var(--amber); font-size: 9px; font-weight: 800; display: grid; place-items: center; }
+
+  .res-name { font: 600 14px var(--sans); fill: var(--text); }
+  .res-sub { font: 11px var(--sans); fill: var(--dim); }
+  .edge { fill: none; stroke-width: 1.6; stroke-linejoin: round; }
+  .edge.ok { stroke: var(--edge); }
+  .edge.amb { stroke: var(--amber); stroke-dasharray: 6 5; stroke-width: 1.8; }
+  .edge.bad { stroke: var(--red); stroke-width: 3; stroke-dasharray: 10 6; animation: flow 0.9s linear infinite; }
+  .edge.glow { stroke: var(--red); stroke-width: 12; opacity: .16; }
+  @keyframes flow { to { stroke-dashoffset: -16; } }
+  .elabel rect { fill: #2a1316; stroke: rgba(255,90,95,.6); }
+  .elabel text { font: 600 11px var(--mono); fill: #ff9ea1; }
+
+  /* Правая панель */
+  aside { background: var(--panel); border-left: 1px solid var(--border); overflow: auto; padding: 18px 18px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .sec h3 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .count { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 99px; letter-spacing: 0; }
+  .count.r { background: rgba(255,90,95,.16); color: var(--red); }
+  .count.a { background: rgba(245,165,36,.16); color: var(--amber); }
+  .v { position: relative; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px 13px 18px; margin-bottom: 10px; overflow: hidden; }
+  .v::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--red); }
+  .v.amb::before { background: var(--amber); }
+  .v.active { border-color: rgba(255,90,95,.55); background: #1c1519; }
+  .v .path { font: 600 13px var(--mono); display: flex; align-items: center; gap: 6px; }
+  .v .path em { font-style: normal; color: var(--dim); }
+  .v .kind { display: inline-block; margin-top: 8px; font: 600 11px var(--mono); color: #ff9ea1; background: rgba(255,90,95,.12); border-radius: 6px; padding: 2px 7px; }
+  .v.amb .kind { color: #f7c46b; background: rgba(245,165,36,.12); }
+  .v p { margin-top: 8px; font-size: 14px; line-height: 1.45; }
+  .v .meta { margin-top: 8px; font-size: 12px; color: var(--dim); }
+  .v .act { margin-top: 11px; display: flex; gap: 8px; }
+  .v .act span { font-size: 12px; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--border-2); color: var(--muted); }
+  .v .act span.p { background: var(--text); color: #111; border-color: var(--text); font-weight: 600; }
+  .fold { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; font-size: 13px; color: var(--muted); }
+  .foot { margin-top: auto; font-size: 12px; color: var(--dim); display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i>a.</i>archdrift</div>
+  <span class="crumb">/</span>
+  <span class="project">demo-shop</span>
+  <span class="chip">CALM 1.2 · модель v1</span>
+  <div class="spacer"></div>
+  <div class="live"><span class="dot"></span><b>Live</b> · обновлено 3 с назад</div>
+  <div class="seg"><button>30 с</button><button class="on">1 мин</button><button>5 мин</button><button>15 мин</button></div>
+  <div class="iconbtn" title="Тема"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z"/></svg></div>
+</header>
+
+<main>
+  <section class="canvas">
+    <div class="overlay tl">
+      <div class="seg"><button class="on">Сервисы</button><button>Endpoints и воркеры</button></div>
+      <div class="search">⌕ Найти узел<kbd>/</kbd></div>
+      <div class="toggle"><span class="sw"></span>Только расхождения</div>
+    </div>
+    <div class="overlay tr kpi">
+      <div><b>5</b> сервисов</div><div><b>3</b> БД</div><div><b>3</b> топика</div><div><b>17</b> связей</div>
+      <div class="bad"><b>2</b> нарушения</div>
+    </div>
+
+    <svg class="graph" viewBox="0 0 1290 620" preserveAspectRatio="xMidYMid meet" id="g">
+      <defs>
+        <marker id="a-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4f4c5e"/></marker>
+        <marker id="a-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff5a5f"/></marker>
+        <marker id="a-amb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f5a524"/></marker>
+      </defs>
+      <g id="edges"></g>
+      <g id="nodes"></g>
+    </svg>
+
+    <div class="hint">Колесо — масштаб · перетаскивание — панорама · клик — подробности</div>
+    <div class="overlay bl"><div class="zoom"><span>−</span><span>100%</span><span>+</span><span>Вписать</span></div></div>
+    <div class="overlay bc legend">
+      <span><svg width="26" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke="#4f4c5e" stroke-width="2"/></svg>По декларации</span>
+      <span><svg width="26" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke="#ff5a5f" stroke-width="3" stroke-dasharray="7 4"/></svg>Вне декларации</span>
+      <span><svg width="26" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke="#f5a524" stroke-width="2" stroke-dasharray="5 4"/></svg>Недостаточно данных</span>
+      <span><svg width="18" height="12"><rect x="1" y="1" width="16" height="10" rx="3" fill="none" stroke="#ff5a5f" stroke-dasharray="3 2"/></svg>Нет в модели</span>
+    </div>
+    <div class="overlay br"><div class="minimap"><svg id="mini" viewBox="0 0 1290 620" width="168" height="92"></svg></div></div>
+  </section>
+
+  <aside>
+    <div class="sec">
+      <h3>Вне декларации <span class="count r">2</span></h3>
+      <div class="v">
+        <div class="path">orders <em>→</em> orders.debug</div>
+        <span class="kind">publish · Kafka</span>
+        <p>orders публикует в топик <b>orders.debug</b> — этого топика нет в CALM-модели.</p>
+        <div class="meta">37 операций · последняя 20:04:50</div>
+        <div class="act"><span class="p">Показать на схеме</span><span>Трейс в Jaeger ↗</span></div>
+      </div>
+      <div class="v active">
+        <div class="path">payments <em>→</em> orders_db</div>
+        <span class="kind">SELECT · PostgreSQL</span>
+        <p>payments читает чужую базу <b>orders_db</b> — такая связь в модели не описана.</p>
+        <div class="meta">52 операции · последняя 20:04:58</div>
+        <div class="act"><span class="p">Показать на схеме</span><span>Трейс в Jaeger ↗</span></div>
+      </div>
+    </div>
+    <div class="sec">
+      <h3>Недостаточно данных <span class="count a">1</span></h3>
+      <div class="v amb">
+        <div class="path">orders <em>→</em> payments</div>
+        <span class="kind">HTTP · без route</span>
+        <p>Вызов виден только на уровне сервиса — нельзя проверить конкретный endpoint.</p>
+        <div class="meta">12 операций · уточните инструментацию</div>
+      </div>
+    </div>
+    <div class="fold">Телеметрия неполная · 2 спана без route <span>▸</span></div>
+    <div class="foot"><span>Окно 20:04–20:05 UTC</span><span>Модель v1 · 19:50</span></div>
+  </aside>
+</main>
+
+<script>
+// Колонки слоёв (ранг по направлению вызова) и ряды. В приложении это считает layered-раскладка.
+const X = [30, 240, 450, 660, 870, 1080], W = 180;
+const Y = { A: 95, B: 205, C: 315, D: 425, E: 535 };
+const nodes = [
+  { id: "gateway",            kind: "svc",   c: 0, r: "C", sub: "2 endpoints", st: ["ok", "230 опер/мин"] },
+  { id: "orders",             kind: "svc",   c: 1, r: "C", sub: "3 endpoints", st: ["bad", "1 нарушение"], warn: true },
+  { id: "payments",           kind: "svc",   c: 2, r: "B", sub: "2 endpoints", st: ["bad", "1 нарушение"], warn: true },
+  { id: "notifications",      kind: "svc",   c: 3, r: "C", sub: "1 воркер",    st: ["ok", "41 опер/мин"] },
+  { id: "inventory",          kind: "svc",   c: 4, r: "A", sub: "1 endpoint · 1 воркер", st: ["ok", "88 опер/мин"] },
+  { id: "orders.created",     kind: "topic", c: 2, r: "C", sub: "Kafka · shop-events" },
+  { id: "orders.debug",       kind: "topic", c: 2, r: "E", sub: "нет в модели", unknown: true },
+  { id: "payments.completed", kind: "topic", c: 3, r: "A", sub: "Kafka · shop-events" },
+  { id: "payments_db",        kind: "db",    c: 3, r: "B", sub: "PostgreSQL" },
+  { id: "orders_db",          kind: "db",    c: 3, r: "D", sub: "PostgreSQL" },
+  { id: "inventory_db",       kind: "db",    c: 5, r: "A", sub: "PostgreSQL" },
+];
+const SIZE = { svc: [W, 82], topic: [W, 60], db: [118, 92] };
+const box = {};
+for (const n of nodes) {
+  const [w, h] = SIZE[n.kind];
+  const x = X[n.c] + (W - w) / 2, cy = Y[n.r];
+  box[n.id] = { x, y: cy - h / 2, w, h, cy, L: x, R: x + w };
+}
+const R = (id) => [box[id].R, box[id].cy], L = (id, dy = 0) => [box[id].L, box[id].cy + dy];
+
+// Рёбра: ортогональные, всегда слева направо; общий «ствол» у исходящих рёбер одного узла.
+const edges = [
+  { s: "gateway", t: "orders", st: "ok" },
+  { s: "orders", t: "payments", st: "amb", via: [428] },
+  { s: "orders", t: "inventory", st: "ok", pts: [R("orders"), [428, 315], [428, 40], [850, 40], [850, 82], L("inventory", -13)] },
+  { s: "orders", t: "orders.created", st: "ok" },
+  { s: "orders", t: "orders_db", st: "ok", via: [432], dy: -12 },
+  { s: "orders", t: "orders.debug", st: "bad", via: [437] },
+  { s: "payments", t: "payments.completed", st: "ok", via: [645] },
+  { s: "payments", t: "payments_db", st: "ok" },
+  { s: "payments", t: "orders_db", st: "bad", via: [649], dy: 12, label: "SELECT" },
+  { s: "orders.created", t: "notifications", st: "ok" },
+  { s: "payments.completed", t: "inventory", st: "ok" },
+  { s: "inventory", t: "inventory_db", st: "ok" },
+];
+
+function rounded(pts, r = 9) {
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i - 1], [x, y] = pts[i], [nx, ny] = pts[i + 1];
+    const d1 = Math.hypot(x - px, y - py), d2 = Math.hypot(nx - x, ny - y), k = Math.min(r, d1 / 2, d2 / 2);
+    const ax = x - (x - px) / d1 * k, ay = y - (y - py) / d1 * k, bx = x + (nx - x) / d2 * k, by = y + (ny - y) / d2 * k;
+    d += ` L${ax},${ay} Q${x},${y} ${bx},${by}`;
+  }
+  const last = pts[pts.length - 1];
+  return d + ` L${last[0]},${last[1]}`;
+}
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+const gE = document.getElementById("edges"), gN = document.getElementById("nodes"), mini = document.getElementById("mini");
+
+for (const e of edges) {
+  const [sx, sy] = R(e.s), [tx, ty] = L(e.t, e.dy || 0);
+  const pts = e.pts || (e.via ? [[sx, sy], [e.via[0], sy], [e.via[0], ty], [tx - 2, ty]] : [[sx, sy], [tx - 2, ty]]);
+  const d = rounded(pts);
+  if (e.st === "bad") el("path", { d, class: "edge glow" }, gE);
+  el("path", { d, class: `edge ${e.st}`, "marker-end": `url(#a-${e.st})` }, gE);
+  el("path", { d, fill: "none", stroke: e.st === "bad" ? "#ff5a5f" : e.st === "amb" ? "#f5a524" : "#3a3846", "stroke-width": e.st === "bad" ? 8 : 4 }, mini);
+  if (e.label) {
+    const lx = e.via[0], ly = 258, g = el("g", { class: "elabel" }, gE);
+    el("rect", { x: lx - 30, y: ly - 11, width: 60, height: 22, rx: 6 }, g);
+    const t = el("text", { x: lx, y: ly + 4, "text-anchor": "middle" }, g); t.textContent = e.label;
+  }
+}
+
+const ICON = {
+  svc: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="12" height="12" rx="3"/><path d="M5 8h6M8 5v6"/></svg>',
+};
+for (const n of nodes) {
+  const b = box[n.id];
+  if (n.kind === "svc") {
+    const fo = el("foreignObject", { x: b.x, y: b.y, width: b.w, height: b.h }, gN);
+    fo.innerHTML = `<div xmlns="http://www.w3.org/1999/xhtml" class="node${n.warn ? " warn" : ""}">
+      <div class="t"><span class="ico svc">${ICON.svc}</span>${n.id}</div>
+      <div class="s">${n.sub}</div>
+      <div class="st ${n.st[0]}">${n.st[1]}</div></div>`;
+    el("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: 14, fill: n.warn ? "#5a2a2e" : "#2b2935" }, mini);
+  } else if (n.kind === "db") {
+    // Стоячий цилиндр
+    const ry = 11, { x, y, w, h } = b, stroke = "#3a3846";
+    el("path", { d: `M${x},${y + ry} a${w / 2},${ry} 0 0 1 ${w},0 v${h - 2 * ry} a${w / 2},${ry} 0 0 1 ${-w},0 z`, fill: "#17161f", stroke, "stroke-width": 1.2 }, gN);
+    el("ellipse", { cx: x + w / 2, cy: y + ry, rx: w / 2, ry, fill: "#1f1e2a", stroke, "stroke-width": 1.2 }, gN);
+    el("path", { d: `M${x},${y + ry + 9} a${w / 2},${ry} 0 0 0 ${w},0`, fill: "none", stroke: "#2b2935" }, gN);
+    const t = el("text", { x: x + w / 2, y: y + h / 2 + 9, "text-anchor": "middle", class: "res-name" }, gN); t.textContent = n.id;
+    const s = el("text", { x: x + w / 2, y: y + h / 2 + 26, "text-anchor": "middle", class: "res-sub" }, gN); s.textContent = n.sub;
+    el("rect", { x, y, width: w, height: h, rx: 18, fill: "#2b2935" }, mini);
+  } else {
+    // Лежачий цилиндр
+    const rx = 12, { x, y, w, h } = b, red = n.unknown, stroke = red ? "#ff5a5f" : "#3a3846";
+    const dash = red ? { "stroke-dasharray": "5 4" } : {};
+    el("path", { d: `M${x + rx},${y} h${w - 2 * rx} a${rx},${h / 2} 0 0 1 0,${h} h${-(w - 2 * rx)} a${rx},${h / 2} 0 0 1 0,${-h} z`, fill: red ? "#1f1416" : "#17161f", stroke, "stroke-width": 1.3, ...dash }, gN);
+    el("ellipse", { cx: x + w - rx, cy: y + h / 2, rx, ry: h / 2, fill: red ? "#2a1719" : "#1f1e2a", stroke, "stroke-width": 1.3, ...dash }, gN);
+    const t = el("text", { x: x + w / 2 - 6, y: y + h / 2 - 2, "text-anchor": "middle", class: "res-name" }, gN); t.textContent = n.id;
+    const s = el("text", { x: x + w / 2 - 6, y: y + h / 2 + 15, "text-anchor": "middle", class: "res-sub", style: red ? "fill:#ff9ea1" : "" }, gN); s.textContent = n.sub;
+    el("rect", { x, y, width: w, height: h, rx: 28, fill: red ? "#5a2a2e" : "#2b2935" }, mini);
+  }
+}
+el("rect", { x: 4, y: 4, width: 1282, height: 612, fill: "none", stroke: "#a78bfa", "stroke-width": 10, rx: 20, opacity: .5 }, mini);
+</script>
+</body>
+</html>
