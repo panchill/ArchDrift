@@ -10,8 +10,13 @@ instrumentation:
     — destination service. Нет SERVER — допускается destination service только при
     явном archdrift.peer.service; иначе unmatchedHttpClientSpans. CLIENT — единственный
     опорный спан, SERVER повторно вызов не считает.
+  grpc: CLIENT/SERVER без http.request.method, но с rpc.system или rpc.system.name
+    = grpc считается HTTP-спаном с method=POST и route="/"+rpc.method, если rpc.method
+    уже содержит "/" (pkg.Service/Method), иначе "/"+rpc.service+"/"+rpc.method.
+    Дальше действуют правила http, вид связи http_call. Так gRPC-методы совпадают
+    с серверами, которые сами пишут http.route=/pkg.Service/Method.
   owner: 'Для исходящего HTTP, DB или publish ищется ближайший предок в том же сервисе:
-    спан с archdrift.worker.name либо HTTP SERVER с method+route. Поиск ограничен
+    спан с archdrift.worker.name либо HTTP/gRPC SERVER с method+route. Поиск ограничен
     текущим trace, прекращается при переходе в другой service, отсутствии предка или
     цикле. Если владелец не найден — service. Для consume владелец определяется сначала
     по самому process-спану, затем по его предкам. Все наблюдаемые HTTP SERVER и спаны
@@ -43,6 +48,7 @@ contractDetails:
     Поддерживаются HTTP endpoints, фоновые воркеры, PostgreSQL-базы и Kafka-топики.
     REST — JSON; ingestion — бинарный OTLP protobuf. Регистрация Collector не требуется.
     Версия 0.3.0: вход — CALM 1.2; отдельная политика разрешений удалена.
+    Версия 0.3.1: gRPC CLIENT/SERVER учитываются как http_call (раздел instrumentation.grpc).
     Граф всегда детальный. Сворачивание endpoints/workers до сервисов выполняет frontend.
     Принадлежность parentId не является ребром взаимодействия и не является наблюдаемым вызовом.
     Контракт инструментации MVP приведён в разделе instrumentation; это соглашение проекта,
