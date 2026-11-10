@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadSnapshot } from "./api";
 import { GraphCanvas, type Theme } from "./GraphCanvas";
 import {
@@ -22,7 +22,6 @@ const nodeLabels = {
 // Jaeger UI of the OpenTelemetry Demo behind its frontend-proxy.
 const JAEGER = "http://localhost:8080/jaeger/ui";
 const POLL_MS = 5000;
-const windows = ["30 с", "1 мин", "5 мин", "15 мин"];
 const typeTags = {
   http_call: "HTTP",
   db_query: "PostgreSQL",
@@ -30,22 +29,11 @@ const typeTags = {
   consume: "consume · Kafka",
 };
 const number = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
-const time = new Intl.DateTimeFormat("ru-RU", {
-  timeZone: "UTC",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 const clock = new Intl.DateTimeFormat("ru-RU", {
   timeZone: "UTC",
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
-});
-const date = new Intl.DateTimeFormat("ru-RU", {
-  timeZone: "UTC",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
 });
 function EdgeDetails({
   edge,
@@ -206,16 +194,11 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<Analysis | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
-  const [updatedAt, setUpdatedAt] = useState(0);
-  const [now, setNow] = useState(() => Date.now());
   const [view, setView] = useState<GraphView>("services");
   const [status, setStatus] = useState<EdgeStatus | "all">("all");
   const [onlyDrift, setOnlyDrift] = useState(false);
-  const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
-  const [range, setRange] = useState("5 мин");
   const [theme, setTheme] = useState<Theme>("dark");
-  const search = useRef<HTMLInputElement>(null);
   const onSelect = useCallback((id: string | null) => setSelected(id), []);
   useEffect(() => {
     const controller = new AbortController();
@@ -224,7 +207,6 @@ export default function App() {
         .then((data) => {
           if (controller.signal.aborted) return;
           setError("");
-          setUpdatedAt(Date.now());
           // Same payload → same object, so the graph is not rebuilt every poll.
           setSnapshot((prev) =>
             JSON.stringify(prev) === JSON.stringify(data) ? prev : data,
@@ -242,33 +224,18 @@ export default function App() {
     };
   }, [attempt]);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (e.key !== "/" || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))
-        return;
-      e.preventDefault();
-      search.current?.focus();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, []);
-  useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
   const graph = useMemo(() => {
     if (!snapshot) return { nodes: [], edges: [] };
-    const full = buildGraph(snapshot, view, status, query);
+    const full = buildGraph(snapshot, view, status);
     if (!onlyDrift) return full;
     const edges = full.edges.filter((e) => e.status !== "declared");
     const keep = new Set(edges.flatMap((e) => [e.source, e.target]));
     for (const { node } of full.nodes)
       if (keep.has(node.id) && "parentId" in node) keep.add(node.parentId);
     return { nodes: full.nodes.filter((n) => keep.has(n.node.id)), edges };
-  }, [snapshot, view, status, query, onlyDrift]);
+  }, [snapshot, view, status, onlyDrift]);
   const meta = useMemo(
     () => (snapshot ? nodeMeta(snapshot) : undefined),
     [snapshot],
@@ -290,13 +257,10 @@ export default function App() {
   const unclear = snapshot?.edges.filter((e) => e.status === "indeterminate") ?? [];
   const violations =
     snapshot?.edges.filter((e) => e.status === "unexpected").length ?? 0;
-  const count = (type: string) =>
-    snapshot?.nodes.filter((n) => n.node.type === type).length ?? 0;
   const show = (item: Pick<Edge, "source" | "target" | "type" | "dbOperation">) => {
     setView("details");
     setStatus("all");
     setOnlyDrift(false);
-    setQuery("");
     setSelected(edgeKey(item));
   };
   const hasIncompleteTelemetry =
@@ -304,9 +268,6 @@ export default function App() {
     (snapshot.diagnostics.unmatchedHttpClientSpans > 0 ||
       snapshot.diagnostics.unresolvedResourceSpans > 0 ||
       snapshot.diagnostics.serviceLevelOperations > 0);
-  const startDate = snapshot ? date.format(new Date(snapshot.from)) : "";
-  const endDate = snapshot ? date.format(new Date(snapshot.to)) : "";
-  const ago = Math.max(0, Math.round((now - updatedAt) / 1000));
   return (
     <div className="app">
       <header className="topbar">
@@ -315,17 +276,7 @@ export default function App() {
         </a>
         <span className="brand-separator">/</span>
         <span className="project">Astronomy Shop</span>
-        <span className="chip">
-          CALM 1.2 · модель v{snapshot?.architectureVersion ?? "—"}
-        </span>
         <div className="topbar-right">
-          <span className={`live ${error ? "offline" : ""}`}>
-            <i />
-            {error ? "Нет связи" : "Live"}
-            {updatedAt > 0 && (
-              <span className="muted"> · обновлено {ago} с назад</span>
-            )}
-          </span>
           <button
             className="icon-button"
             aria-label="Обновить сейчас"
@@ -334,17 +285,6 @@ export default function App() {
           >
             ↻
           </button>
-          <div className="segmented" aria-label="Период анализа">
-            {windows.map((w) => (
-              <button
-                key={w}
-                aria-pressed={range === w}
-                onClick={() => setRange(w)}
-              >
-                {w}
-              </button>
-            ))}
-          </div>
           <button
             className="icon-button"
             aria-label="Переключить тему"
@@ -398,19 +338,6 @@ export default function App() {
                   Endpoints и воркеры
                 </button>
               </div>
-              <label className="search">
-                <input
-                  ref={search}
-                  aria-label="Поиск узла"
-                  placeholder="Найти узел"
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setSelected(null);
-                  }}
-                />
-                <kbd>/</kbd>
-              </label>
               <select
                 aria-label="Статус связи"
                 value={status}
@@ -440,18 +367,6 @@ export default function App() {
               </label>
             </div>
             <div className="float counters" aria-label="Сводка анализа">
-              <span>
-                <strong>{count("service")}</strong> сервисов
-              </span>
-              <span>
-                <strong>{count("postgres_database")}</strong> БД
-              </span>
-              <span>
-                <strong>{count("kafka_topic")}</strong> топики
-              </span>
-              <span>
-                <strong>{snapshot.edges.length}</strong> связей
-              </span>
               <span className={violations ? "danger" : ""}>
                 <strong>{violations}</strong> нарушения
               </span>
@@ -566,28 +481,6 @@ export default function App() {
                 ))}
               </details>
             </div>
-            <footer className="inspector-footer">
-              <span aria-label="Окно анализа">
-                Окно {time.format(new Date(snapshot.from))} —{" "}
-                {time.format(new Date(snapshot.to))} UTC · {startDate}
-                {startDate !== endDate ? ` — ${endDate}` : ""} · {range}
-              </span>
-              <span>
-                Модель v{snapshot.architectureVersion} ·{" "}
-                <a
-                  href={`${import.meta.env.BASE_URL}mocks/architecture.json`}
-                  download="architecture.json"
-                >
-                  CALM JSON ↓
-                </a>{" "}
-                <a
-                  href={`${import.meta.env.BASE_URL}mocks/analysis.json`}
-                  download
-                >
-                  Анализ JSON ↓
-                </a>
-              </span>
-            </footer>
           </aside>
         </div>
       )}

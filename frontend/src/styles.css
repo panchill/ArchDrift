@@ -125,44 +125,11 @@ code {
 .project {
   font-weight: 600;
 }
-.chip {
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--text-2);
-  font-size: 12px;
-}
 .topbar-right {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.live {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  font-size: 13px;
-}
-.live i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ok);
-  animation: pulse 2s infinite;
-}
-.live.offline i {
-  background: var(--bad);
-  animation: none;
-}
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent);
-  }
-  100% {
-    box-shadow: 0 0 0 8px transparent;
-  }
 }
 .icon-button {
   width: 34px;
@@ -251,42 +218,17 @@ code {
   flex-wrap: wrap;
   max-width: calc(100% - 480px);
 }
-.toolbar select,
-.search {
+.toolbar select {
   height: 36px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--card);
   box-shadow: var(--shadow);
-}
-.toolbar select {
   padding: 0 10px;
   font-size: 13px;
 }
 .toolbar .segmented {
   box-shadow: var(--shadow);
-}
-.search {
-  display: flex;
-  align-items: center;
-  padding: 0 8px 0 12px;
-  width: 210px;
-}
-.search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  outline: 0;
-  background: none;
-  font-size: 13px;
-}
-kbd {
-  padding: 1px 6px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  color: var(--text-3);
-  font-family: var(--mono);
-  font-size: 11px;
 }
 .switch {
   display: flex;
@@ -384,13 +326,6 @@ kbd {
 .canvas-tools output {
   display: inline-block;
   min-width: 40px;
-}
-.canvas-hint {
-  position: absolute;
-  right: 14px;
-  bottom: 60px;
-  color: var(--text-3);
-  font-size: 12px;
 }
 .legend {
   left: 50%;
@@ -564,21 +499,6 @@ kbd {
   margin-left: auto;
   color: var(--text-3);
 }
-.inspector-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 16px;
-  border-top: 1px solid var(--line);
-  color: var(--text-3);
-  font-size: 12px;
-}
-.inspector-footer a {
-  color: var(--text-2);
-}
-.inspector-footer a:hover {
-  color: var(--text);
-}
 
 /* Selected node / edge details */
 .inspector h3 {
@@ -712,8 +632,7 @@ kbd {
   .toolbar {
     max-width: calc(100% - 28px);
   }
-  .counters,
-  .canvas-hint {
+  .counters {
     display: none;
   }
 }

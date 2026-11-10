@@ -473,9 +473,6 @@ export function GraphCanvas({
           Вписать
         </button>
       </div>
-      <span className="canvas-hint">
-        Два пальца — перемещение · щипок — зум · клик — фокус
-      </span>
     </div>
   );
 }
