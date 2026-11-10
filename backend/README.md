@@ -14,9 +14,38 @@ Fx applies migrations before opening the HTTP listener. On SIGTERM/SIGINT it
 stops accepting requests, drains active requests, then closes the database pool.
 Startup has a 30-second budget; shutdown uses Fx's 15-second budget.
 
-The implemented routes remain `GET /healthz` (also HEAD) and `POST /v1/traces`.
-OTLP stays protobuf-only with the existing 4 MiB limit and partial-success/error
-responses. This refactor does not implement the remaining API endpoints.
+Implemented routes: `GET /healthz` (also HEAD), `POST /v1/traces`, and
+`PUT` / `GET /api/v1/architecture`. OTLP is protobuf-only with a 4 MiB limit.
+
+## Architecture
+
+PUT accepts a CALM 1.2 JSON document with `Content-Type: application/json`.
+Official vocabulary schemas are embedded from `internal/architecture/schemas/`;
+validation never fetches schemas or external documents. The parser additionally
+checks the ArchDrift profile, bindings, ownership and relationship references,
+and exposes canonical nodes/selectors for analysis using the shared `nodeid` package.
+The request body is limited to 16 MiB; invalid input returns 400 with field details.
+
+Migration 2 adds one current architecture record, with no revision history.
+The JSON document is preserved (including additional fields and exact numbers);
+only `metadata.archdrift.version` changes. Whitespace/property order may change.
+The initial PUT must contain revision 0 and saves revision 1. Further PUTs must
+contain the current revision and save N+1. Unique insertion and conditional SQL
+updates arbitrate concurrent writers; stale or replayed PUTs return 409 with
+`currentVersion`. GET returns 404 before the first successful PUT.
+
+From the repository root, against an empty local backend:
+
+```sh
+curl --fail-with-body -X PUT http://localhost:8081/api/v1/architecture \
+  -H 'Content-Type: application/json' \
+  --data-binary @examples/opentelemetry-demo.architecture.json
+curl --fail-with-body http://localhost:8081/api/v1/architecture
+```
+
+To edit an existing model, GET the current `model`, edit it and PUT that document
+with its current revision. Re-uploading the example's revision 0 returns 409.
+After a conflict, read and merge the current model before retrying.
 
 ## Migrations
 
@@ -40,10 +69,11 @@ go vet ./...
 go test -race ./...
 ```
 
-Set `TEST_DATABASE_URL` to a disposable PostgreSQL URL to also run migration and
-Fx integration tests. Tests use isolated temporary schemas and check fresh migrations,
+Set `TEST_DATABASE_URL` to a disposable PostgreSQL URL to also run architecture,
+migration and Fx integration tests. Tests use isolated temporary schemas and check fresh migrations,
 concurrent/repeated startup, advisory-lock cancellation, HTTP draining and startup
-failure cleanup. CI supplies PostgreSQL 18 and runs these tests.
+failure cleanup, concurrent architecture updates, JSON preservation and the
+architecture HTTP scenario (including rejected updates). CI supplies PostgreSQL 18 and runs these tests.
 Without that variable integration tests explicitly skip.
 
 ## Railway

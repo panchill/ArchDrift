@@ -41,7 +41,7 @@ func TestLifecycleMigratesAndDrainsBeforeClosingPool(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = application.Stop(context.Background()) })
 	var version int
-	if err := pool.QueryRow(ctx, "SELECT max(version_id) FROM goose_db_version WHERE is_applied").Scan(&version); err != nil || version != 1 {
+	if err := pool.QueryRow(ctx, "SELECT max(version_id) FROM goose_db_version WHERE is_applied").Scan(&version); err != nil || version != 2 {
 		t.Fatalf("schema not ready: version=%d error=%v", version, err)
 	}
 	client := &http.Client{Timeout: 5 * time.Second}
