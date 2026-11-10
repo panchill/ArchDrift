@@ -1,3 +1,4 @@
+-- +goose Up
 CREATE TABLE IF NOT EXISTS spans (
     trace_id bytea NOT NULL,
     span_id bytea NOT NULL,
@@ -16,3 +17,6 @@ CREATE TABLE IF NOT EXISTS spans (
 );
 
 CREATE INDEX IF NOT EXISTS spans_start_time_idx ON spans (start_time);
+
+-- +goose Down
+DROP TABLE spans;

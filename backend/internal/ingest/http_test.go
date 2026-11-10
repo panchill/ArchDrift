@@ -2,12 +2,15 @@ package ingest
 
 import (
 	"context"
+
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gin-gonic/gin"
 
 	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/protobuf/proto"
@@ -124,7 +127,9 @@ func TestHandleTooLarge(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-protobuf")
 	req.ContentLength = maxBody + 1
 	rec := httptest.NewRecorder()
-	Handle(rec, req, db)
+	router := gin.New()
+	router.POST("/v1/traces", Handler(db))
+	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("status %d", rec.Code)
 	}
@@ -138,6 +143,8 @@ func postTraces(t *testing.T, db SpanStore, body []byte, contentType, encoding s
 		req.Header.Set("Content-Encoding", encoding)
 	}
 	rec := httptest.NewRecorder()
-	Handle(rec, req, db)
+	router := gin.New()
+	router.POST("/v1/traces", Handler(db))
+	router.ServeHTTP(rec, req)
 	return rec
 }
