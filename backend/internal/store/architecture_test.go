@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/panchill/ArchDrift/backend/internal/architecture"
 	"github.com/panchill/ArchDrift/backend/internal/testdb"
 	"github.com/panchill/ArchDrift/backend/migrations"
 )
@@ -17,34 +17,37 @@ func TestArchitecturePersistenceAndConcurrentWrites(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := New(pool)
-	if _, err := s.GetArchitecture(t.Context()); !errors.Is(err, pgx.ErrNoRows) {
+	if _, err := s.GetArchitecture(t.Context()); !errors.Is(err, architecture.ErrNotConfigured) {
 		t.Fatalf("empty model: %v", err)
 	}
 	raw := json.RawMessage(`{"metadata":{"archdrift":{"version":0},"extra":{"number":9007199254740993}},"custom":[true,"unchanged"],"nul":"\u0000","huge":1e131072}`)
 	if _, err := s.PutArchitecture(t.Context(), raw, 7); err == nil {
 		t.Fatal("created with nonzero revision")
 	}
-	for expected := int64(0); expected < 2; expected++ {
+	for expected := range int64(2) {
 		var wg sync.WaitGroup
 		type outcome struct {
-			a   Architecture
+			a   architecture.Snapshot
 			err error
 		}
 		results := make(chan outcome, 2)
 		for range 2 {
-			wg.Go(func() { a, err := s.PutArchitecture(t.Context(), raw, expected); results <- outcome{a, err} })
+			wg.Go(func() {
+				a, err := s.PutArchitecture(t.Context(), raw, expected)
+				results <- outcome{a: a, err: err}
+			})
 		}
 		wg.Wait()
 		close(results)
 		success, conflict := 0, 0
-		var saved Architecture
+		var saved architecture.Snapshot
 		for r := range results {
-			var vc *VersionConflict
+			vc, isConflict := errors.AsType[*architecture.VersionConflict](r.err)
 			switch {
 			case r.err == nil:
 				success++
 				saved = r.a
-			case errors.As(r.err, &vc):
+			case isConflict:
 				conflict++
 				if vc.CurrentVersion != expected+1 {
 					t.Fatalf("current version: %d", vc.CurrentVersion)

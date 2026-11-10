@@ -99,7 +99,7 @@ func TestProfileReferencesAndBindings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, details := Parse(raw); len(details) == 0 {
+			if _, details := parseDocument(t, raw); len(details) == 0 {
 				t.Fatal("invalid profile accepted")
 			}
 		})
@@ -115,8 +115,11 @@ func TestNormalizedDeclarations(t *testing.T) {
 	end(r, "source")["interfaces"] = []any{"checkout", "lookup"}
 	end(r, "destination")["node"] = "svc-gateway"
 	delete(end(r, "destination"), "interfaces")
-	raw, _ := json.Marshal(m)
-	got, details := Parse(raw)
+	raw, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, details := parseDocument(t, raw)
 	if len(details) != 0 {
 		t.Fatal(details)
 	}
@@ -166,8 +169,11 @@ func TestCompatiblePairs(t *testing.T) {
 				s["interfaces"] = []any{"checkout"}
 			}
 		}
-		raw, _ := json.Marshal(m)
-		_, details := Parse(raw)
+		raw, err := json.Marshal(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, details := parseDocument(t, raw)
 		if (len(details) == 0) != tc.valid {
 			t.Fatalf("%s -> %s (%s): %v", tc.source, tc.target, tc.typ, details)
 		}

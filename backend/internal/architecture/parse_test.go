@@ -2,10 +2,28 @@ package architecture
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"strings"
 	"testing"
 )
+
+func parseDocument(t *testing.T, raw []byte) (*Model, []Detail) {
+	t.Helper()
+	validator, err := NewValidator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := validator.Parse(raw)
+	if err == nil {
+		return model, []Detail{}
+	}
+	validation, ok := errors.AsType[*ValidationError](err)
+	if !ok {
+		t.Fatalf("unexpected parsing error: %v", err)
+	}
+	return nil, validation.Details
+}
 
 func fixture(t *testing.T) map[string]any {
 	t.Helper()
@@ -25,7 +43,7 @@ func TestParseDemo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, details := Parse(raw)
+	m, details := parseDocument(t, raw)
 	if len(details) != 0 {
 		t.Fatal(details)
 	}
@@ -75,7 +93,7 @@ func TestProfile(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, details := Parse(raw)
+			_, details := parseDocument(t, raw)
 			if tc.field == "" {
 				if len(details) != 0 {
 					t.Fatal(details)
@@ -94,7 +112,7 @@ func TestProfile(t *testing.T) {
 
 func TestInvalidJSON(t *testing.T) {
 	for _, raw := range []string{"", "null", "[]", "{} {}", "{", `{"nodes":null}`} {
-		if _, details := Parse([]byte(raw)); len(details) == 0 {
+		if _, details := parseDocument(t, []byte(raw)); len(details) == 0 {
 			t.Fatalf("accepted %q", raw)
 		}
 	}
@@ -108,8 +126,11 @@ func TestCollectionLimitsBeforeSchemaValidation(t *testing.T) {
 			items[i] = map[string]any{}
 		}
 		m[field] = items
-		raw, _ := json.Marshal(m)
-		_, details := Parse(raw)
+		raw, err := json.Marshal(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, details := parseDocument(t, raw)
 		if len(details) != 1 || details[0].Field != "/"+field {
 			t.Fatalf("limit not applied before schema traversal: %+v", details)
 		}
@@ -133,7 +154,7 @@ func TestRevisionNumbers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got, details := Parse(raw)
+		got, details := parseDocument(t, raw)
 		if (len(details) == 0) != tc.valid || (tc.valid && got.Version != tc.want) {
 			t.Fatalf("revision %s: model=%+v details=%v", tc.raw, got, details)
 		}

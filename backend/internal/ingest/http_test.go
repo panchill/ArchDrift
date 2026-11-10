@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 
 	"github.com/panchill/ArchDrift/backend/internal/model"
+	"github.com/panchill/ArchDrift/backend/internal/usecase"
 )
 
 type memStore struct {
@@ -128,14 +129,14 @@ func TestHandleTooLarge(t *testing.T) {
 	req.ContentLength = maxBody + 1
 	rec := httptest.NewRecorder()
 	router := gin.New()
-	router.POST("/v1/traces", Handler(db))
+	RegisterTracesRoutes(router, NewTracesHandler(usecase.NewTraces(db)))
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("status %d", rec.Code)
 	}
 }
 
-func postTraces(t *testing.T, db SpanStore, body []byte, contentType, encoding string) *httptest.ResponseRecorder {
+func postTraces(t *testing.T, db usecase.SpanRepository, body []byte, contentType, encoding string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, "/v1/traces", strings.NewReader(string(body)))
 	req.Header.Set("Content-Type", contentType)
@@ -144,7 +145,7 @@ func postTraces(t *testing.T, db SpanStore, body []byte, contentType, encoding s
 	}
 	rec := httptest.NewRecorder()
 	router := gin.New()
-	router.POST("/v1/traces", Handler(db))
+	RegisterTracesRoutes(router, NewTracesHandler(usecase.NewTraces(db)))
 	router.ServeHTTP(rec, req)
 	return rec
 }

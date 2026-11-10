@@ -16,7 +16,7 @@ func TestRecoveryLogsStackWithoutSensitiveValues(t *testing.T) {
 	previous := log.Writer()
 	log.SetOutput(&output)
 	defer log.SetOutput(previous)
-	router := NewRouter(nil)
+	router := NewRouter()
 	router.GET("/panic-test", func(*gin.Context) { panic("sensitive-panic-value") })
 	req := httptest.NewRequest(http.MethodGet, "/panic-test", strings.NewReader("sensitive-body"))
 	req.Header.Set("Authorization", "sensitive-authorization")

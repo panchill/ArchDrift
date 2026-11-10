@@ -7,34 +7,38 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/panchill/ArchDrift/backend/internal/architecture"
+	"github.com/panchill/ArchDrift/backend/internal/usecase"
 )
 
-type Architecture struct {
-	Version   int64           `json:"version"`
-	UpdatedAt time.Time       `json:"updatedAt"`
-	Model     json.RawMessage `json:"model"`
-}
+var _ usecase.ArchitectureRepository = (*Store)(nil)
 
-type VersionConflict struct{ CurrentVersion int64 }
-
-func (*VersionConflict) Error() string { return "architecture version conflict" }
-
-func (s *Store) GetArchitecture(ctx context.Context) (Architecture, error) {
-	var a Architecture
-	err := s.pool.QueryRow(ctx, "SELECT version, updated_at, model FROM architecture WHERE singleton").Scan(&a.Version, &a.UpdatedAt, &a.Model)
-	return a, err
+func (s *Store) GetArchitecture(ctx context.Context) (architecture.Snapshot, error) {
+	var a architecture.Snapshot
+	const query = "SELECT version, updated_at, model FROM architecture WHERE singleton"
+	if err := s.pool.QueryRow(ctx, query).Scan(&a.Version, &a.UpdatedAt, &a.Model); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return architecture.Snapshot{}, fmt.Errorf("get architecture: %w", architecture.ErrNotConfigured)
+		}
+		return architecture.Snapshot{}, fmt.Errorf("get architecture: %w: %w", architecture.ErrUnavailable, err)
+	}
+	return a, nil
 }
 
 // PutArchitecture requires a validated CALM document. The unique singleton key
 // arbitrates first creation; conditional UPDATE arbitrates later revisions.
 // JSON (rather than JSONB) also retains JSON numbers outside PostgreSQL numeric's
 // range and escaped NUL characters in descriptive fields. Only revision changes.
-func (s *Store) PutArchitecture(ctx context.Context, model json.RawMessage, expected int64) (Architecture, error) {
+func (s *Store) PutArchitecture(
+	ctx context.Context,
+	model json.RawMessage,
+	expected int64,
+) (architecture.Snapshot, error) {
 	if expected < 0 {
-		return Architecture{}, fmt.Errorf("negative revision")
+		return architecture.Snapshot{}, errors.New("negative revision")
 	}
 	next := expected
 	if next < math.MaxInt64 {
@@ -44,7 +48,7 @@ func (s *Store) PutArchitecture(ctx context.Context, model json.RawMessage, expe
 	// A stale MaxInt64 expectation must still produce a normal version conflict.
 	model, err := withVersion(model, next)
 	if err != nil {
-		return Architecture{}, err
+		return architecture.Snapshot{}, fmt.Errorf("set architecture revision: %w", err)
 	}
 	query := `UPDATE architecture
 		SET model = $1::json,
@@ -58,41 +62,53 @@ func (s *Store) PutArchitecture(ctx context.Context, model json.RawMessage, expe
 			ON CONFLICT (singleton) DO NOTHING RETURNING version, updated_at, model`
 		args = args[:1]
 	}
-	var a Architecture
+	var a architecture.Snapshot
 	err = s.pool.QueryRow(ctx, query, args...).Scan(&a.Version, &a.UpdatedAt, &a.Model)
+	if err == nil {
+		return a, nil
+	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return a, err
+		return architecture.Snapshot{}, fmt.Errorf("save architecture: %w: %w", architecture.ErrUnavailable, err)
 	}
 	var current int64
-	if err := s.pool.QueryRow(ctx, "SELECT COALESCE((SELECT version FROM architecture WHERE singleton), 0)").Scan(&current); err != nil {
-		return Architecture{}, err
+	const currentVersionQuery = "SELECT COALESCE((SELECT version FROM architecture WHERE singleton), 0)"
+	if err := s.pool.QueryRow(ctx, currentVersionQuery).Scan(&current); err != nil {
+		return architecture.Snapshot{}, fmt.Errorf(
+			"get current architecture revision: %w: %w", architecture.ErrUnavailable, err,
+		)
 	}
-	return Architecture{}, &VersionConflict{CurrentVersion: current}
+	return architecture.Snapshot{}, &architecture.VersionConflict{CurrentVersion: current}
 }
 
 func withVersion(raw json.RawMessage, version int64) (json.RawMessage, error) {
-	var doc, metadata, binding map[string]json.RawMessage
+	doc := map[string]json.RawMessage{}
+	metadata := map[string]json.RawMessage{}
+	binding := map[string]json.RawMessage{}
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode architecture: %w", err)
 	}
 	if err := json.Unmarshal(doc["metadata"], &metadata); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode architecture metadata: %w", err)
 	}
 	if err := json.Unmarshal(metadata["archdrift"], &binding); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode architecture revision binding: %w", err)
 	}
 	if binding == nil {
-		return nil, fmt.Errorf("missing architecture revision binding")
+		return nil, errors.New("missing architecture revision binding")
 	}
 	binding["version"] = json.RawMessage(strconv.FormatInt(version, 10))
 	var err error
 	metadata["archdrift"], err = json.Marshal(binding)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encode architecture revision binding: %w", err)
 	}
 	doc["metadata"], err = json.Marshal(metadata)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encode architecture metadata: %w", err)
 	}
-	return json.Marshal(doc)
+	model, err := json.Marshal(doc)
+	if err != nil {
+		return nil, fmt.Errorf("encode architecture: %w", err)
+	}
+	return model, nil
 }

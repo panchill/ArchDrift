@@ -10,7 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/panchill/ArchDrift/backend/internal/model"
+	"github.com/panchill/ArchDrift/backend/internal/usecase"
 )
+
+var _ usecase.SpanRepository = (*Store)(nil)
 
 type Store struct {
 	pool *pgxpool.Pool

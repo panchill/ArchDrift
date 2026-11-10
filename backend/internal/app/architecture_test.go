@@ -1,24 +1,41 @@
-package architecture_test
+package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/panchill/ArchDrift/backend/internal/ingest"
-	"github.com/panchill/ArchDrift/backend/internal/store"
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/fx"
+
+	"github.com/panchill/ArchDrift/backend/internal/architecture"
 	"github.com/panchill/ArchDrift/backend/internal/testdb"
-	"github.com/panchill/ArchDrift/backend/migrations"
 )
 
 func TestArchitectureHTTP(t *testing.T) {
-	_, pool := testdb.New(t)
-	if err := migrations.Up(t.Context(), pool); err != nil {
+	dsn, _ := testdb.New(t)
+	t.Setenv("DATABASE_URL", dsn)
+	t.Setenv("ADDR", "127.0.0.1:0")
+	var router *gin.Engine
+	var pool *pgxpool.Pool
+	application := New(fx.NopLogger, fx.Populate(&router, &pool))
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	if err := application.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
-	router := ingest.NewRouter(store.New(pool))
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := application.Stop(ctx); err != nil {
+			t.Error(err)
+		}
+	})
 	request := func(method, media string, body []byte, status int) []byte {
 		t.Helper()
 		r := httptest.NewRequest(method, "/api/v1/architecture", bytes.NewReader(body))
@@ -53,7 +70,7 @@ func TestArchitectureHTTP(t *testing.T) {
 	invalidUTF8 := bytes.Replace(raw, []byte("Full topology"), []byte{'F', 0xff}, 1)
 	checkCode(request("PUT", "application/json", invalidUTF8, 400), "validation_error")
 	saved := request("PUT", "application/json; charset=utf-8", raw, 200)
-	var first store.Architecture
+	var first architecture.Snapshot
 	if err := json.Unmarshal(saved, &first); err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +108,7 @@ func TestArchitectureHTTP(t *testing.T) {
 		}
 	}
 	updated := request("PUT", "application/json", first.Model, 200)
-	var second store.Architecture
+	var second architecture.Snapshot
 	if err := json.Unmarshal(updated, &second); err != nil || second.Version != 2 {
 		t.Fatalf("invalid replacement: %s", updated)
 	}

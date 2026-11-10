@@ -69,11 +69,9 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rejected != 3 {
-		t.Fatalf("rejected = %d, хотели 3", rejected)
-	}
-	if len(spans) != 1 {
-		t.Fatalf("spans = %d, хотели 1", len(spans))
+	// Reject invalid wire records early; deduplication belongs to the use case.
+	if len(spans) != 2 || rejected != 3 {
+		t.Fatalf("spans=%d rejected=%d, want 2 and 3", len(spans), rejected)
 	}
 	got := spans[0]
 	if got.ServiceName != "checkout" || got.Name != "PlaceOrder" || got.Kind != model.KindClient {
@@ -108,11 +106,11 @@ func TestParse(t *testing.T) {
 func TestParseEmptyAndGarbage(t *testing.T) {
 	spans, rejected, err := Parse(nil)
 	if err != nil || rejected != 0 || len(spans) != 0 {
-		t.Fatalf("пустое тело: spans=%d rejected=%d err=%v", len(spans), rejected, err)
+		t.Fatalf("пустое тело: spans=%d err=%v", len(spans), err)
 	}
 	spans, rejected, err = Parse([]byte{})
 	if err != nil || rejected != 0 || len(spans) != 0 {
-		t.Fatalf("нулевая длина: spans=%d rejected=%d err=%v", len(spans), rejected, err)
+		t.Fatalf("нулевая длина: spans=%d err=%v", len(spans), err)
 	}
 	if _, _, err := Parse([]byte{0xff}); err == nil {
 		t.Fatal("мусорный protobuf должен давать ошибку")
