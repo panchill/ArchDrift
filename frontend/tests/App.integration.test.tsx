@@ -97,8 +97,9 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByRole("img");
+    await user.click(screen.getByRole("button", { name: "Показать панель" }));
     await user.click(
-      screen.getAllByRole("button", { name: "Показать на схеме" })[0],
+      screen.getAllByRole("button", { name: /Checkout → Email/ })[0],
     );
     const panel = within(screen.getByLabelText("Детали графа"));
     expect(panel.getByText("http_call")).toBeVisible();
@@ -109,7 +110,21 @@ describe("mock → HTTP client → React → Cytoscape", () => {
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     ).toHaveAttribute("aria-pressed", "true");
     await user.click(panel.getByRole("button", { name: /К списку нарушений/ }));
-    expect(screen.getByText(analysis.violations[0].message)).toBeVisible();
+    expect(
+      screen.getAllByRole("button", { name: /Checkout → Email/ })[0],
+    ).toBeVisible();
+  });
+  it("starts with the side panel hidden and toggles it", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("img");
+    expect(screen.getByLabelText("Детали графа")).not.toBeVisible();
+    const toggle = screen.getByRole("button", { name: "Показать панель" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(screen.getByLabelText("Детали графа")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Скрыть панель" }));
+    expect(screen.getByLabelText("Детали графа")).not.toBeVisible();
   });
   it("handles real Cytoscape tap events without recreating the graph", async () => {
     render(<App />);
@@ -186,6 +201,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     render(<App />);
     await screen.findByRole("img");
     expect(screen.queryByText("Телеметрия неполная")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Показать панель" }));
     expect(
       screen.getByText("В этом интервале нет наблюдаемых связей."),
     ).toBeVisible();
