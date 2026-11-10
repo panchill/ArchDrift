@@ -469,8 +469,8 @@ export default function App() {
               <span>CALM 1.2 / OpenTelemetry · Демонстрационные данные</span>
               <div>
                 <a
-                  href={`${import.meta.env.BASE_URL}mocks/architecture.json`}
-                  download
+                  href={`data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(snapshot.architecture.model, null, 2))}`}
+                  download="architecture.json"
                 >
                   CALM JSON ↓
                 </a>
