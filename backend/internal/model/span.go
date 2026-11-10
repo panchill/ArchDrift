@@ -1,5 +1,3 @@
-// Package model — спан в том виде, в котором его хранит приём трейсов
-// и читает построение графа.
 package model
 
 import "time"
@@ -19,25 +17,20 @@ const (
 	StatusError Status = "ERROR"
 )
 
-// Kind — значение Span.kind из контракта.
 type Kind string
 
-// Status — значение Span.status из контракта.
 type Status string
 
-// Attr — components/schemas/AttributeValue.
 type Attr struct {
 	Type  string `json:"type"`
 	Value string `json:"value"`
 }
 
-// Link — ссылка OTel. Kafka process может жить в другом трейсе.
 type Link struct {
 	TraceID string `json:"traceId"`
 	SpanID  string `json:"spanId"`
 }
 
-// Span — сохранённый спан. Идентификаторы — нижний hex без нулевых ID.
 type Span struct {
 	TraceID            string
 	SpanID             string
@@ -54,7 +47,6 @@ type Span struct {
 	Links              []Link
 }
 
-// StringAttr возвращает непустой строковый атрибут спана.
 func (s Span) StringAttr(key string) (string, bool) {
 	a, ok := s.Attributes[key]
 	if !ok || a.Type != "string" || a.Value == "" {
