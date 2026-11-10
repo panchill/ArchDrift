@@ -39,7 +39,6 @@ func TestParse(t *testing.T) {
 		link := ok.Links().AppendEmpty()
 		link.SetTraceID(traceID(2))
 		link.SetSpanID(spanID(3))
-		// нулевой link пропускается
 		_ = ok.Links().AppendEmpty()
 
 		dup := ss.AppendEmpty()
