@@ -72,10 +72,13 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     expect(cy.nodes(".postgres_database")).toHaveLength(3);
     expect(cy.nodes(".kafka_topic")).toHaveLength(3);
     expect(cy.nodes(".service")).toHaveLength(5);
-    expect(screen.getByRole("link", { name: /CALM JSON/ })).toHaveAttribute(
-      "href",
-      "/mocks/architecture.json",
-    );
+    const download = screen.getByRole("link", { name: /CALM JSON/ });
+    expect(download).toHaveAttribute("download", "architecture.json");
+    const href = download.getAttribute("href")!;
+    const prefix = "data:application/json;charset=utf-8,";
+    expect(href.startsWith(prefix)).toBe(true);
+    const model = JSON.parse(decodeURIComponent(href.slice(prefix.length)));
+    expect(model).toEqual(architecture.model);
   });
   it("switches to endpoints, keeps compound membership and destroys replaced graph", async () => {
     const user = userEvent.setup();
