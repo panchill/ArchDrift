@@ -1,26 +1,16 @@
-import type { Snapshot, Architecture, Analysis } from "./types";
+import type { Analysis } from "./types";
 
-// Fixtures mirror the two REST responses. The UI never derives drift from CALM.
-async function readJson<T>(path: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(`${import.meta.env.BASE_URL}mocks/${path}`, {
-    signal,
-  });
+// The fixture mirrors GET /api/v1/analysis. The UI never derives drift from CALM.
+export async function loadSnapshot(signal: AbortSignal): Promise<Analysis> {
+  const response = await fetch(
+    `${import.meta.env.BASE_URL}mocks/analysis.json`,
+    {
+      signal,
+    },
+  );
   if (!response.ok)
-    throw new Error(`Не удалось загрузить ${path}: HTTP ${response.status}`);
-  return response.json() as Promise<T>;
-}
-export async function loadSnapshot(signal: AbortSignal): Promise<Snapshot> {
-  const [architecture, analysis] = await Promise.all([
-    readJson<Architecture>("architecture.json", signal),
-    readJson<Analysis>("analysis.json", signal),
-  ]);
-  if (
-    architecture.version !== analysis.architectureVersion ||
-    architecture.version !== architecture.model.metadata?.archdrift?.version
-  ) {
     throw new Error(
-      "Версии архитектуры и анализа не совпадают. Обновите данные.",
+      `Не удалось загрузить analysis.json: HTTP ${response.status}`,
     );
-  }
-  return { architecture, analysis };
+  return response.json() as Promise<Analysis>;
 }

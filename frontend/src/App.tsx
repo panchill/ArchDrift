@@ -7,7 +7,7 @@ import {
   type DisplayEdge,
   type GraphView,
 } from "./graph";
-import type { EdgeStatus, GraphNode, Snapshot } from "./types";
+import type { Analysis, EdgeStatus, GraphNode } from "./types";
 import "./styles.css";
 
 const nodeLabels = {
@@ -129,7 +129,7 @@ function NodeDetails({ item }: { item: GraphNode }) {
 }
 
 export default function App() {
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<Analysis | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [view, setView] = useState<GraphView>("services");
@@ -154,31 +154,25 @@ export default function App() {
   const graph = useMemo(
     () =>
       snapshot
-        ? buildGraph(snapshot.analysis, view, status, query)
+        ? buildGraph(snapshot, view, status, query)
         : { nodes: [], edges: [] },
     [snapshot, view, status, query],
   );
   const names = useMemo(
-    () =>
-      new Map(
-        snapshot?.analysis.nodes.map((n) => [n.node.id, n.node.label]) ?? [],
-      ),
+    () => new Map(snapshot?.nodes.map((n) => [n.node.id, n.node.label]) ?? []),
     [snapshot],
   );
   const edge = graph.edges.find((e) => e.id === selected);
   const node = graph.nodes.find((n) => n.node.id === selected);
   const violations =
-    snapshot?.analysis.edges.filter((e) => e.status === "unexpected").length ??
-    0;
+    snapshot?.edges.filter((e) => e.status === "unexpected").length ?? 0;
   const hasIncompleteTelemetry =
     snapshot &&
-    (snapshot.analysis.diagnostics.unmatchedHttpClientSpans > 0 ||
-      snapshot.analysis.diagnostics.unresolvedResourceSpans > 0 ||
-      snapshot.analysis.diagnostics.serviceLevelOperations > 0);
-  const startDate = snapshot
-    ? date.format(new Date(snapshot.analysis.from))
-    : "";
-  const endDate = snapshot ? date.format(new Date(snapshot.analysis.to)) : "";
+    (snapshot.diagnostics.unmatchedHttpClientSpans > 0 ||
+      snapshot.diagnostics.unresolvedResourceSpans > 0 ||
+      snapshot.diagnostics.serviceLevelOperations > 0);
+  const startDate = snapshot ? date.format(new Date(snapshot.from)) : "";
+  const endDate = snapshot ? date.format(new Date(snapshot.to)) : "";
   return (
     <div className="app">
       <header className="topbar">
@@ -226,15 +220,14 @@ export default function App() {
                 <span>
                   <strong>
                     {
-                      snapshot.analysis.nodes.filter(
-                        (n) => n.node.type === "service",
-                      ).length
+                      snapshot.nodes.filter((n) => n.node.type === "service")
+                        .length
                     }
                   </strong>{" "}
                   сервисов
                 </span>
                 <span>
-                  <strong>{snapshot.analysis.edges.length}</strong> связей
+                  <strong>{snapshot.edges.length}</strong> связей
                 </span>
                 <span className={violations ? "summary-warning" : ""}>
                   <strong>{violations}</strong> нарушения
@@ -242,8 +235,8 @@ export default function App() {
               </div>
               <div className="snapshot-time">
                 <span>
-                  {time.format(new Date(snapshot.analysis.from))} —{" "}
-                  {time.format(new Date(snapshot.analysis.to))} UTC
+                  {time.format(new Date(snapshot.from))} —{" "}
+                  {time.format(new Date(snapshot.to))} UTC
                 </span>
                 <span>
                   {startDate}
@@ -313,7 +306,7 @@ export default function App() {
                       {graph.nodes.length} узлов · {graph.edges.length} связей в
                       представлении
                     </span>
-                    <span>Архитектура v{snapshot.architecture.version}</span>
+                    <span>Архитектура v{snapshot.architectureVersion}</span>
                   </div>
                   <div className="graph-legend" aria-label="Легенда графа">
                     {Object.entries(statusLabels).map(([key, label]) => (
@@ -340,7 +333,7 @@ export default function App() {
                         отклонения.
                       </p>
                       <div className="violation-list">
-                        {snapshot.analysis.violations.map((v, i) => (
+                        {snapshot.violations.map((v, i) => (
                           <button
                             className="violation-card"
                             key={i}
@@ -371,37 +364,27 @@ export default function App() {
                           </button>
                         ))}
                       </div>
-                      {snapshot.analysis.edges.length === 0 && (
+                      {snapshot.edges.length === 0 && (
                         <p className="notice">
                           В этом интервале нет наблюдаемых связей.
                         </p>
                       )}
-                      {snapshot.analysis.edges.length > 0 &&
-                        violations === 0 && (
-                          <p className="notice">
-                            Нарушений в наблюдаемых связях нет.
-                          </p>
-                        )}
+                      {snapshot.edges.length > 0 && violations === 0 && (
+                        <p className="notice">
+                          Нарушений в наблюдаемых связях нет.
+                        </p>
+                      )}
                       {hasIncompleteTelemetry && (
                         <details className="diagnostics">
                           <summary>Телеметрия неполная</summary>
                           <p>
                             HTTP-вызовы без определённого назначения:{" "}
-                            {
-                              snapshot.analysis.diagnostics
-                                .unmatchedHttpClientSpans
-                            }
-                            . Ресурсы без идентичности:{" "}
-                            {
-                              snapshot.analysis.diagnostics
-                                .unresolvedResourceSpans
-                            }
-                            . Операции без детализации:{" "}
-                            {
-                              snapshot.analysis.diagnostics
-                                .serviceLevelOperations
-                            }
-                            . Отсутствие нарушения не доказывает соответствие.
+                            {snapshot.diagnostics.unmatchedHttpClientSpans}.
+                            Ресурсы без идентичности:{" "}
+                            {snapshot.diagnostics.unresolvedResourceSpans}.
+                            Операции без детализации:{" "}
+                            {snapshot.diagnostics.serviceLevelOperations}.
+                            Отсутствие нарушения не доказывает соответствие.
                           </p>
                         </details>
                       )}
@@ -469,7 +452,7 @@ export default function App() {
               <span>CALM 1.2 / OpenTelemetry · Демонстрационные данные</span>
               <div>
                 <a
-                  href={`data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(snapshot.architecture.model, null, 2))}`}
+                  href={`${import.meta.env.BASE_URL}mocks/architecture.json`}
                   download="architecture.json"
                 >
                   CALM JSON ↓

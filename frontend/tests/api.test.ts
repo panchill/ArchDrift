@@ -1,24 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { loadSnapshot } from "../src/api";
-import architecture from "../public/mocks/architecture.json";
 import analysis from "../public/mocks/analysis.json";
 
 describe("mock HTTP client", () => {
-  it("loads the two actual response formats using an abort signal", async () => {
-    const fetcher = vi.fn(
-      async (url: string) =>
-        new Response(
-          JSON.stringify(
-            url.includes("architecture") ? architecture : analysis,
-          ),
-        ),
-    );
+  it("loads the analysis response using an abort signal", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(analysis)));
     vi.stubGlobal("fetch", fetcher);
     const signal = new AbortController().signal;
-    expect(await loadSnapshot(signal)).toEqual({ architecture, analysis });
-    expect(fetcher).toHaveBeenCalledWith("/mocks/architecture.json", {
-      signal,
-    });
+    expect(await loadSnapshot(signal)).toEqual(analysis);
+    expect(fetcher).toHaveBeenCalledOnce();
     expect(fetcher).toHaveBeenCalledWith("/mocks/analysis.json", { signal });
   });
   it("reports non-200 responses rather than rendering invalid data", async () => {
@@ -30,38 +20,6 @@ describe("mock HTTP client", () => {
       "HTTP 404",
     );
   });
-  it.each(["analysis", "model"])(
-    "rejects a mismatched %s version",
-    async (source) => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(
-          async (url: string) =>
-            new Response(
-              JSON.stringify(
-                url.includes("architecture")
-                  ? source === "model"
-                    ? {
-                        ...architecture,
-                        model: {
-                          ...architecture.model,
-                          metadata: { archdrift: { version: 2 } },
-                        },
-                      }
-                    : architecture
-                  : {
-                      ...analysis,
-                      architectureVersion: source === "analysis" ? 2 : 1,
-                    },
-              ),
-            ),
-        ),
-      );
-      await expect(loadSnapshot(new AbortController().signal)).rejects.toThrow(
-        "Версии архитектуры",
-      );
-    },
-  );
   it("surfaces malformed JSON", async () => {
     vi.stubGlobal(
       "fetch",

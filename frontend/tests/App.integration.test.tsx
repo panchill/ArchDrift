@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Core, CytoscapeOptions } from "cytoscape";
 import App from "../src/App";
-import architecture from "../public/mocks/architecture.json";
 import analysis from "../public/mocks/analysis.json";
 
 const { cores } = vi.hoisted(() => ({ cores: [] as Core[] }));
@@ -26,10 +25,7 @@ vi.mock("cytoscape", async (importOriginal) => {
     },
   };
 });
-const respond = (url: string) =>
-  new Response(
-    JSON.stringify(url.includes("architecture") ? architecture : analysis),
-  );
+const respond = () => new Response(JSON.stringify(analysis));
 beforeEach(() => {
   cores.length = 0;
   vi.stubGlobal(
@@ -41,7 +37,7 @@ beforeEach(() => {
   );
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: string) => respond(url)),
+    vi.fn(async () => respond()),
   );
 });
 
@@ -74,11 +70,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     expect(cy.nodes(".service")).toHaveLength(23);
     const download = screen.getByRole("link", { name: /CALM JSON/ });
     expect(download).toHaveAttribute("download", "architecture.json");
-    const href = download.getAttribute("href")!;
-    const prefix = "data:application/json;charset=utf-8,";
-    expect(href.startsWith(prefix)).toBe(true);
-    const model = JSON.parse(decodeURIComponent(href.slice(prefix.length)));
-    expect(model).toEqual(architecture.model);
+    expect(download).toHaveAttribute("href", "/mocks/architecture.json");
   });
   it("switches to endpoints, keeps compound membership and destroys replaced graph", async () => {
     const user = userEvent.setup();
@@ -175,14 +167,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn(
-        async (url: string) =>
-          new Response(
-            JSON.stringify(
-              url.includes("architecture") ? architecture : changed,
-            ),
-          ),
-      ),
+      vi.fn(async () => new Response(JSON.stringify(changed))),
     );
     render(<App />);
     await screen.findByRole("img");
@@ -203,7 +188,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("HTTP 503");
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (url: string) => respond(url)),
+      vi.fn(async () => respond()),
     );
     await user.click(screen.getByRole("button", { name: "Повторить" }));
     expect(await screen.findByRole("img")).toBeVisible();
@@ -213,9 +198,9 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     const signals: AbortSignal[] = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (url: string, options: { signal: AbortSignal }) => {
+      vi.fn(async (_url: string, options: { signal: AbortSignal }) => {
         signals.push(options.signal);
-        return respond(url);
+        return respond();
       }),
     );
     const { unmount } = render(<App />);
@@ -230,7 +215,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     render(<App />);
     await screen.findByRole("img");
     await user.click(screen.getByRole("button", { name: /Обновить мок/ }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     expect(await screen.findByRole("img")).toBeVisible();
   });
   it("handles a valid no-observations snapshot without claiming incomplete telemetry", async () => {
@@ -250,12 +235,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn(
-        async (url: string) =>
-          new Response(
-            JSON.stringify(url.includes("architecture") ? architecture : empty),
-          ),
-      ),
+      vi.fn(async () => new Response(JSON.stringify(empty))),
     );
     render(<App />);
     await screen.findByRole("img");
@@ -276,19 +256,13 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     let count = 0;
     vi.stubGlobal(
       "fetch",
-      vi.fn((url: string) => {
+      vi.fn(() => {
         count++;
-        if (count <= 2)
+        if (count <= 1)
           return new Promise<Response>((resolve) =>
-            pending.push(() => resolve(respond(url))),
+            pending.push(() => resolve(respond())),
           );
-        return Promise.resolve(
-          new Response(
-            JSON.stringify(
-              url.includes("architecture") ? architecture : recent,
-            ),
-          ),
-        );
+        return Promise.resolve(new Response(JSON.stringify(recent)));
       }),
     );
     const user = userEvent.setup();
