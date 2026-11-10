@@ -80,11 +80,21 @@ Without that variable integration tests explicitly skip.
 
 - `internal/architecture`: CALM validation, canonical model, snapshots and domain errors;
   no HTTP, PostgreSQL or Fx imports.
-- `internal/usecase`: read/replace operations and the repository interface they consume.
-- `internal/ingest`: named HTTP handler methods, request limits and mapping domain errors to API responses.
+- `internal/model`, `internal/graph`, `internal/nodeid`: spans and their acceptance rules,
+  graph construction and canonical identifiers; no transport or database dependencies.
+- `internal/usecase`: architecture read/replace and trace ingestion, including batch deduplication;
+  repository interfaces are defined here and consume domain types.
+- `internal/ingest`: named HTTP handlers, request limits, OTLP decoding/encoding and mapping errors
+  to API responses. The decoder applies domain acceptance rules before allocating rejected records; the use case
+  validates its inputs and deduplicates accepted spans before persistence.
 - `internal/store`: PostgreSQL repository, atomic revision checks and translation of database errors.
 - `internal/app`: Fx constructors and route registration. The CALM validator is created explicitly;
   schema compilation errors fail application construction without package initialization panics.
+
+HTTP handlers never access PostgreSQL directly. Fx supplies the same store through the
+architecture and span repository interfaces. Ingestion keeps the first valid span per
+trace/span ID, counts invalid spans in OTLP partial success, and saves each batch atomically.
+An integration test exercises this path through Fx, including replay and transaction rollback.
 
 ## Railway
 

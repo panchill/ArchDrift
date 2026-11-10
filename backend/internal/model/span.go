@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"encoding/hex"
+	"strings"
+	"time"
+)
 
 const (
 	KindUnspecified Kind = "UNSPECIFIED"
@@ -45,6 +49,24 @@ type Span struct {
 	Attributes         map[string]Attr
 	ResourceAttributes map[string]Attr
 	Links              []Link
+}
+
+func (s Span) Valid() bool {
+	return validID(s.TraceID, 16) && validID(s.SpanID, 8) &&
+		strings.TrimSpace(s.ServiceName) != "" && !s.End.Before(s.Start)
+}
+
+func validID(id string, size int) bool {
+	decoded, err := hex.DecodeString(id)
+	if err != nil || len(decoded) != size {
+		return false
+	}
+	for _, b := range decoded {
+		if b != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func (s Span) StringAttr(key string) (string, bool) {

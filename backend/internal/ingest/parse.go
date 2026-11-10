@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"math"
 	"strconv"
-	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -19,11 +18,8 @@ func Parse(body []byte) ([]model.Span, int, error) {
 	if err := req.UnmarshalProto(body); err != nil {
 		return nil, 0, err
 	}
-	var (
-		out      []model.Span
-		rejected int
-		seen     = map[string]struct{}{}
-	)
+	var out []model.Span
+	rejected := 0
 	rss := req.Traces().ResourceSpans()
 	for i := 0; i < rss.Len(); i++ {
 		rs := rss.At(i)
@@ -32,17 +28,12 @@ func Parse(body []byte) ([]model.Span, int, error) {
 		for j := 0; j < ilss.Len(); j++ {
 			spans := ilss.At(j).Spans()
 			for k := 0; k < spans.Len(); k++ {
-				sp, ok := convertSpan(spans.At(k), service, resource)
+				span, ok := convertSpan(spans.At(k), service, resource)
 				if !ok {
 					rejected++
 					continue
 				}
-				key := sp.TraceID + "/" + sp.SpanID
-				if _, dup := seen[key]; dup {
-					continue
-				}
-				seen[key] = struct{}{}
-				out = append(out, sp)
+				out = append(out, span)
 			}
 		}
 	}
@@ -59,12 +50,12 @@ func resourceOf(res pcommon.Resource) (string, map[string]model.Attr) {
 }
 
 func convertSpan(sp ptrace.Span, service string, resource map[string]model.Attr) (model.Span, bool) {
-	if sp.TraceID().IsEmpty() || sp.SpanID().IsEmpty() || strings.TrimSpace(service) == "" {
-		return model.Span{}, false
+	span := model.Span{
+		TraceID: sp.TraceID().String(), SpanID: sp.SpanID().String(),
+		ServiceName: service, Start: sp.StartTimestamp().AsTime(), End: sp.EndTimestamp().AsTime(),
 	}
-	start := sp.StartTimestamp().AsTime()
-	end := sp.EndTimestamp().AsTime()
-	if end.Before(start) {
+	// Apply the domain rule before allocating attributes for rejected wire records.
+	if !span.Valid() {
 		return model.Span{}, false
 	}
 	parent := ""
@@ -82,21 +73,15 @@ func convertSpan(sp ptrace.Span, service string, resource map[string]model.Attr)
 			SpanID:  link.SpanID().String(),
 		})
 	}
-	return model.Span{
-		TraceID:            sp.TraceID().String(),
-		SpanID:             sp.SpanID().String(),
-		ParentSpanID:       parent,
-		ServiceName:        service,
-		Name:               sp.Name(),
-		Kind:               kindOf(sp.Kind()),
-		Start:              start,
-		End:                end,
-		Status:             statusOf(sp.Status().Code()),
-		StatusMessage:      sp.Status().Message(),
-		Attributes:         attrMap(sp.Attributes()),
-		ResourceAttributes: resource,
-		Links:              links,
-	}, true
+	span.ParentSpanID = parent
+	span.Name = sp.Name()
+	span.Kind = kindOf(sp.Kind())
+	span.Status = statusOf(sp.Status().Code())
+	span.StatusMessage = sp.Status().Message()
+	span.Attributes = attrMap(sp.Attributes())
+	span.ResourceAttributes = resource
+	span.Links = links
+	return span, true
 }
 
 func kindOf(k ptrace.SpanKind) model.Kind {

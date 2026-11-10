@@ -21,14 +21,24 @@ func New(options ...fx.Option) *fx.App {
 			func(lc fx.Lifecycle, cfg config) (*pgxpool.Pool, error) {
 				return store.NewPool(lc, cfg.DatabaseURL)
 			},
-			fx.Annotate(store.New, fx.As(new(usecase.ArchitectureRepository)), fx.As(fx.Self())),
+			fx.Annotate(store.New,
+				fx.As(new(usecase.ArchitectureRepository)),
+				fx.As(new(usecase.SpanRepository)),
+			),
 			architecture.NewValidator,
 			usecase.NewArchitecture,
+			usecase.NewTraces,
 			ingest.NewArchitectureHandler,
+			ingest.NewTracesHandler,
 			ingest.NewRouter,
 			newServer,
 		),
-		fx.Invoke(ingest.RegisterArchitectureRoutes, func(*http.Server) {}),
+		fx.Invoke(
+			ingest.RegisterHealthRoutes,
+			ingest.RegisterTracesRoutes,
+			ingest.RegisterArchitectureRoutes,
+			func(*http.Server) {},
+		),
 		fx.Options(options...),
 	)
 }
