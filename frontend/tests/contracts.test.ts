@@ -24,6 +24,53 @@ ajv.addFormat("int64", { type: "number", validate: Number.isSafeInteger });
 ajv.addFormat("double", { type: "number", validate: Number.isFinite });
 
 describe("fixtures conform to the backend contract", () => {
+  it("requires an expected revision for PUT, allowing zero only in the input", () => {
+    const input = ajv.compile({
+      $ref: "#/components/schemas/ArchitectureInput",
+      components: api.components,
+    });
+    const response = ajv.compile({
+      $ref: "#/components/schemas/Architecture",
+      components: api.components,
+    });
+    for (const version of [0, 1, 42]) {
+      const model = {
+        ...architecture.model,
+        metadata: { archdrift: { version } },
+      };
+      expect(input(model), JSON.stringify(input.errors)).toBe(true);
+      expect(response({ ...architecture, version, model })).toBe(version > 0);
+    }
+    for (const version of [undefined, null, -1, 1.5, "1"]) {
+      const model = {
+        ...architecture.model,
+        metadata: { archdrift: { version } },
+      };
+      expect(input(model)).toBe(false);
+    }
+    for (const metadata of [undefined, {}, { archdrift: {} }]) {
+      expect(input({ ...architecture.model, metadata })).toBe(false);
+    }
+    expect(architecture.version).toBe(
+      architecture.model.metadata.archdrift.version,
+    );
+    expect(analysis.architectureVersion).toBe(architecture.version);
+  });
+  it("documents conflicts for both first creation and later updates", () => {
+    const conflict =
+      api.paths["/api/v1/architecture"].put.responses["409"].content[
+        "application/json"
+      ];
+    const validate = ajv.compile({
+      ...conflict.schema,
+      components: api.components,
+    });
+    expect(validate(conflict.example), JSON.stringify(validate.errors)).toBe(
+      true,
+    );
+    expect(validate({ ...conflict.example, currentVersion: 0 })).toBe(true);
+    expect(validate({ ...conflict.example, currentVersion: -1 })).toBe(false);
+  });
   it.each([
     ["Architecture", architecture],
     ["Analysis", analysis],

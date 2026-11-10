@@ -79,6 +79,7 @@ export interface Architecture {
   updatedAt: string;
   model: {
     $schema: string;
+    metadata: { archdrift: { version: number } };
     nodes: CalmNode[];
     relationships: Record<string, unknown>[];
   };

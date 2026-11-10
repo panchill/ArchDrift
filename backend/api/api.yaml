@@ -2,7 +2,7 @@
 openapi: 3.0.3
 info:
   title: ArchDrift MVP API
-  version: 0.3.0
+  version: 0.4.0
   description: 'MVP: HTTP, workers, PostgreSQL, Kafka. REST — JSON; ingestion — OTLP
     protobuf. Подробности: instrumentation.yaml.'
 servers:
@@ -44,9 +44,13 @@ paths:
       - Architecture
       operationId: replaceArchitecture
       summary: Полностью заменить ожидаемую архитектуру
-      description: Атомарная замена с увеличением version. Проверяются CALM 1.2,
-        ссылки и привязки к OTel; профиль в instrumentation.yaml. Последняя запись
-        побеждает; ошибка не меняет модель.
+      description: |-
+        Атомарная замена с проверкой metadata.archdrift.version из CALM.
+        Клиент передаёт текущую версию, а не следующую; 0 — только для первого создания.
+        При совпадении сервер сохраняет модель с версией N+1, иначе возвращает 409.
+        Сверка версии и запись выполняются атомарно, включая первое создание.
+        Проверяются CALM 1.2, ссылки и привязки к OTel; профиль в instrumentation.yaml.
+        Ошибка не меняет модель, version или updatedAt. Безусловная замена не поддерживается.
       requestBody:
         required: true
         content:
@@ -62,6 +66,16 @@ paths:
                 $ref: "#/components/schemas/Architecture"
         '400':
           $ref: "#/components/responses/BadRequest"
+        '409':
+          description: Версия устарела или не соответствует текущей; модель не изменена
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchitectureVersionConflict"
+              example:
+                code: architecture_version_conflict
+                message: Архитектура уже изменена. Загрузите текущую модель и объедините изменения.
+                currentVersion: 2
         '415':
           $ref: "#/components/responses/UnsupportedMediaType"
         '500':
@@ -296,11 +310,29 @@ components:
       - $schema
       - nodes
       - relationships
+      - metadata
       properties:
         $schema:
           type: string
           enum:
           - https://calm.finos.org/release/1.2/meta/calm.json
+        metadata:
+          type: object
+          required:
+          - archdrift
+          properties:
+            archdrift:
+              type: object
+              additionalProperties: false
+              required:
+              - version
+              properties:
+                version:
+                  type: integer
+                  format: int64
+                  minimum: 0
+                  description: Ожидаемая текущая ревизия при PUT; 0 — модель ещё не создана.
+          additionalProperties: true
         nodes:
           type: array
           minItems: 1
@@ -318,6 +350,8 @@ components:
       description: |-
         Исходный CALM JSON, без обёртки. Сервер проверяет официальную схему 1.2
         и профиль ArchDrift из instrumentation.yaml (calmProfile).
+        Корневое metadata.archdrift.version обязательно; отсутствие или нецелое/отрицательное
+        значение — 400 validation_error. Ревизия модели не является версией стандарта CALM.
         OpenAPI 3.0 не воспроизводит JSON Schema 2020-12; object здесь не отменяет проверку.
       externalDocs:
         url: https://calm.finos.org/release/1.2/meta/calm.json
@@ -333,11 +367,43 @@ components:
           type: integer
           format: int64
           minimum: 1
+          description: Равно model.metadata.archdrift.version; назначается сервером.
         updatedAt:
           type: string
           format: date-time
         model:
-          $ref: "#/components/schemas/ArchitectureInput"
+          allOf:
+          - $ref: "#/components/schemas/ArchitectureInput"
+          - type: object
+            properties:
+              metadata:
+                type: object
+                properties:
+                  archdrift:
+                    type: object
+                    properties:
+                      version:
+                        type: integer
+                        minimum: 1
+    ArchitectureVersionConflict:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - message
+      - currentVersion
+      properties:
+        code:
+          type: string
+          enum:
+          - architecture_version_conflict
+        message:
+          type: string
+        currentVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Версия в момент конфликта; 0, если модель ещё не создана. Перед повтором нужен GET.
     Analysis:
       type: object
       additionalProperties: false
