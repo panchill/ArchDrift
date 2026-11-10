@@ -1,0 +1,119 @@
+// @vitest-environment node
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import Ajv from "ajv";
+import Ajv2020 from "ajv/dist/2020";
+import addFormats from "ajv-formats";
+import { parse } from "yaml";
+import architecture from "../public/mocks/architecture.json";
+import rawAnalysis from "../public/mocks/analysis.json";
+import type { Analysis } from "../src/types";
+import { edgeKey } from "../src/graph";
+import core from "./schemas/core.json";
+import interfaces from "./schemas/interface.json";
+import control from "./schemas/control.json";
+import flow from "./schemas/flow.json";
+
+const analysis = rawAnalysis as Analysis;
+const api = parse(
+  readFileSync(new URL("../../backend/api/api.yaml", import.meta.url), "utf8"),
+);
+const ajv = new Ajv({ strict: false, allErrors: true });
+addFormats(ajv);
+ajv.addFormat("int64", { type: "number", validate: Number.isSafeInteger });
+ajv.addFormat("double", { type: "number", validate: Number.isFinite });
+
+describe("fixtures conform to the backend contract", () => {
+  it.each([
+    ["Architecture", architecture],
+    ["Analysis", analysis],
+  ])("%s matches OpenAPI response schemas", (name, data) => {
+    const validate = ajv.compile({
+      $ref: `#/components/schemas/${name}`,
+      components: api.components,
+    });
+    expect(validate(data), JSON.stringify(validate.errors)).toBe(true);
+  });
+  it("CALM nodes and relationships validate against official CALM 1.2 schemas", () => {
+    const calmAjv = new Ajv2020({ strict: false, allErrors: true });
+    addFormats(calmAjv);
+    [core, interfaces, control, flow].forEach((schema) =>
+      calmAjv.addSchema(schema),
+    );
+    const validate = calmAjv.getSchema(core.$id)!;
+    expect(validate(architecture.model), JSON.stringify(validate.errors)).toBe(
+      true,
+    );
+    const broken = structuredClone(architecture.model);
+    (broken.nodes[0] as Record<string, unknown>).name = 42;
+    expect(validate(broken)).toBe(false);
+  });
+  it("every CALM selector resolves, including interfaces and worker ownership", () => {
+    const nodes = architecture.model.nodes;
+    const nodeIds = new Set(nodes.map((n) => n["unique-id"]));
+    expect(nodeIds.size).toBe(nodes.length);
+    const owners: string[] = [];
+    for (const relationship of architecture.model.relationships) {
+      const kind = relationship["relationship-type"];
+      if (kind["composed-of"]) {
+        expect(nodeIds.has(kind["composed-of"].container)).toBe(true);
+        owners.push(...kind["composed-of"].nodes);
+      }
+      if (kind.connects)
+        for (const selector of [
+          kind.connects.source,
+          kind.connects.destination,
+        ]) {
+          const node = nodes.find((n) => n["unique-id"] === selector.node)!;
+          expect(node).toBeDefined();
+          for (const id of selector.interfaces ?? [])
+            expect(node.interfaces?.some((i) => i["unique-id"] === id)).toBe(
+              true,
+            );
+        }
+    }
+    for (const worker of nodes.filter((n) => n["node-type"] === "worker")) {
+      expect(owners.filter((id) => id === worker["unique-id"])).toHaveLength(1);
+    }
+  });
+  it("all observed references, DB operations, evidence and violations are consistent", () => {
+    const ids = new Set(analysis.nodes.map((n) => n.node.id));
+    const relationshipIds = new Set(
+      architecture.model.relationships
+        .filter((r) => r["relationship-type"].connects)
+        .map((r) => r["unique-id"]),
+    );
+    for (const edge of analysis.edges) {
+      expect(ids.has(edge.source) && ids.has(edge.target)).toBe(true);
+      expect(!!edge.dbOperation).toBe(edge.type === "db_query");
+      expect(edge.errorOperations).toBeLessThanOrEqual(edge.observedOperations);
+      expect(edge.matchedRelationshipIds.length > 0).toBe(
+        edge.status === "declared",
+      );
+      edge.matchedRelationshipIds.forEach((id) =>
+        expect(relationshipIds.has(id)).toBe(true),
+      );
+      expect(Date.parse(edge.firstSeenAt)).toBeGreaterThanOrEqual(
+        Date.parse(analysis.from),
+      );
+      expect(Date.parse(edge.lastSeenAt)).toBeLessThan(Date.parse(analysis.to));
+    }
+    const unexpected = analysis.edges.filter((e) => e.status === "unexpected");
+    expect(analysis.violations).toHaveLength(unexpected.length);
+    analysis.violations.forEach((v) =>
+      expect(
+        unexpected.some(
+          (e) =>
+            edgeKey(e) === edgeKey({ ...v, type: v.edgeType }) &&
+            e.exampleTraceId === v.exampleTraceId,
+        ),
+      ).toBe(true),
+    );
+    expect(new Set(analysis.edges.map(edgeKey)).size).toBe(
+      analysis.edges.length,
+    );
+    expect(new Set(analysis.edges.map((e) => e.status))).toEqual(
+      new Set(["declared", "unexpected", "indeterminate"]),
+    );
+  });
+});

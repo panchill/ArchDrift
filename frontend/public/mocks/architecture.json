@@ -1,0 +1,526 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-09T19:50:00Z",
+  "model": {
+    "$schema": "https://calm.finos.org/release/1.2/meta/calm.json",
+    "nodes": [
+      {
+        "unique-id": "svc-gateway",
+        "node-type": "service",
+        "name": "gateway",
+        "description": "Входная точка магазина",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "gateway"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "checkout",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/checkout"
+              }
+            }
+          },
+          {
+            "unique-id": "lookup",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/orders/{id}"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "svc-orders",
+        "node-type": "service",
+        "name": "orders",
+        "description": "Заказы и их жизненный цикл",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "orders"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "create",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/orders"
+              }
+            }
+          },
+          {
+            "unique-id": "lookup",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/orders/{id}"
+              }
+            }
+          },
+          {
+            "unique-id": "cancel",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/orders/{id}/cancel"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "svc-payments",
+        "node-type": "service",
+        "name": "payments",
+        "description": "Платежи",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "payments"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "charge",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/payments"
+              }
+            }
+          },
+          {
+            "unique-id": "lookup",
+            "metadata": {
+              "archdrift": {
+                "method": "GET",
+                "route": "/payments/{id}"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "svc-inventory",
+        "node-type": "service",
+        "name": "inventory",
+        "description": "Остатки и резервы",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "inventory"
+          }
+        },
+        "interfaces": [
+          {
+            "unique-id": "reserve",
+            "metadata": {
+              "archdrift": {
+                "method": "POST",
+                "route": "/reservations"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "unique-id": "svc-notifications",
+        "node-type": "service",
+        "name": "notifications",
+        "description": "Уведомления покупателям",
+        "metadata": {
+          "archdrift": {
+            "serviceName": "notifications"
+          }
+        }
+      },
+      {
+        "unique-id": "worker-send-email",
+        "node-type": "worker",
+        "name": "send-email",
+        "description": "Обработчик Kafka",
+        "metadata": {
+          "archdrift": {
+            "workerName": "send-email"
+          }
+        }
+      },
+      {
+        "unique-id": "worker-release-reservation",
+        "node-type": "worker",
+        "name": "release-reservation",
+        "description": "Обработчик Kafka",
+        "metadata": {
+          "archdrift": {
+            "workerName": "release-reservation"
+          }
+        }
+      },
+      {
+        "unique-id": "db-orders_db",
+        "node-type": "database",
+        "name": "orders_db",
+        "description": "PostgreSQL · shop-pg",
+        "metadata": {
+          "archdrift": {
+            "instance": "shop-pg",
+            "database": "orders_db"
+          }
+        }
+      },
+      {
+        "unique-id": "db-payments_db",
+        "node-type": "database",
+        "name": "payments_db",
+        "description": "PostgreSQL · shop-pg",
+        "metadata": {
+          "archdrift": {
+            "instance": "shop-pg",
+            "database": "payments_db"
+          }
+        }
+      },
+      {
+        "unique-id": "db-inventory_db",
+        "node-type": "database",
+        "name": "inventory_db",
+        "description": "PostgreSQL · shop-pg",
+        "metadata": {
+          "archdrift": {
+            "instance": "shop-pg",
+            "database": "inventory_db"
+          }
+        }
+      },
+      {
+        "unique-id": "topic-orders.created",
+        "node-type": "kafka-topic",
+        "name": "orders.created",
+        "description": "Kafka · shop-events",
+        "metadata": {
+          "archdrift": {
+            "cluster": "shop-events",
+            "topic": "orders.created"
+          }
+        }
+      },
+      {
+        "unique-id": "topic-payments.completed",
+        "node-type": "kafka-topic",
+        "name": "payments.completed",
+        "description": "Kafka · shop-events",
+        "metadata": {
+          "archdrift": {
+            "cluster": "shop-events",
+            "topic": "payments.completed"
+          }
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "unique-id": "owns-send-email",
+        "relationship-type": {
+          "composed-of": {
+            "container": "svc-notifications",
+            "nodes": [
+              "worker-send-email"
+            ]
+          }
+        }
+      },
+      {
+        "unique-id": "owns-release-reservation",
+        "relationship-type": {
+          "composed-of": {
+            "container": "svc-inventory",
+            "nodes": [
+              "worker-release-reservation"
+            ]
+          }
+        }
+      },
+      {
+        "unique-id": "rel-1",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-gateway",
+              "interfaces": [
+                "checkout"
+              ]
+            },
+            "destination": {
+              "node": "svc-orders",
+              "interfaces": [
+                "create"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-2",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-gateway",
+              "interfaces": [
+                "lookup"
+              ]
+            },
+            "destination": {
+              "node": "svc-orders",
+              "interfaces": [
+                "lookup"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-3",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-orders",
+              "interfaces": [
+                "create"
+              ]
+            },
+            "destination": {
+              "node": "svc-payments",
+              "interfaces": [
+                "charge"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-4",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-orders",
+              "interfaces": [
+                "create"
+              ]
+            },
+            "destination": {
+              "node": "svc-inventory",
+              "interfaces": [
+                "reserve"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "http_call"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-5",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-orders",
+              "interfaces": [
+                "create"
+              ]
+            },
+            "destination": {
+              "node": "db-orders_db"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "db_query"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-6",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-orders",
+              "interfaces": [
+                "lookup"
+              ]
+            },
+            "destination": {
+              "node": "db-orders_db"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "db_query"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-7",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-payments",
+              "interfaces": [
+                "charge"
+              ]
+            },
+            "destination": {
+              "node": "db-payments_db"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "db_query"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-8",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-inventory",
+              "interfaces": [
+                "reserve"
+              ]
+            },
+            "destination": {
+              "node": "db-inventory_db"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "db_query"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-9",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-orders",
+              "interfaces": [
+                "create"
+              ]
+            },
+            "destination": {
+              "node": "topic-orders.created"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "publish"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-10",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "topic-orders.created"
+            },
+            "destination": {
+              "node": "worker-send-email"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "consume"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-11",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "svc-payments",
+              "interfaces": [
+                "charge"
+              ]
+            },
+            "destination": {
+              "node": "topic-payments.completed"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "publish"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-12",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "topic-payments.completed"
+            },
+            "destination": {
+              "node": "worker-release-reservation"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "consume"
+          }
+        }
+      },
+      {
+        "unique-id": "rel-13",
+        "relationship-type": {
+          "connects": {
+            "source": {
+              "node": "worker-release-reservation"
+            },
+            "destination": {
+              "node": "db-inventory_db"
+            }
+          }
+        },
+        "metadata": {
+          "archdrift": {
+            "type": "db_query"
+          }
+        }
+      }
+    ]
+  }
+}
