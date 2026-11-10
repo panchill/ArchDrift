@@ -216,7 +216,7 @@ export default function App() {
   const [range, setRange] = useState("5 мин");
   const [theme, setTheme] = useState<Theme>("dark");
   const search = useRef<HTMLInputElement>(null);
-  const onSelect = useCallback((id: string) => setSelected(id), []);
+  const onSelect = useCallback((id: string | null) => setSelected(id), []);
   useEffect(() => {
     const controller = new AbortController();
     const load = () =>

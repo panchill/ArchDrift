@@ -247,7 +247,7 @@ function styleFor(p: Palette): StylesheetJson {
         "text-border-color": p.bad,
       },
     },
-    { selector: "edge.hover, edge:selected", style: { label: "data(label)", width: 3 } },
+    { selector: "edge:selected", style: { label: "data(label)", width: 3 } },
     { selector: ".faded", style: { opacity: 0.15 } },
   ];
 }
@@ -290,6 +290,7 @@ export function createGraph(
     }),
     style: styleFor(p),
     minZoom: 0.05,
+    userZoomingEnabled: false, // trackpad gestures are handled in GraphCanvas
     maxZoom: 3,
     layout: { name: "preset", fit: false },
   });
@@ -331,7 +332,7 @@ export function GraphCanvas({
 }: {
   graph: DisplayGraph;
   selected: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
   meta?: Map<string, NodeMeta>;
   theme?: Theme;
 }) {
@@ -365,10 +366,24 @@ export function GraphCanvas({
     showZoom();
     cy.on("tap", "node, edge", (event) => onSelect(event.target.id()));
     cy.on("dragfree", "node", remember);
-    cy.on("mouseover", "node", (e) => focus(cy, e.target));
-    cy.on("mouseover", "edge", (e) => e.target.addClass("hover"));
-    cy.on("mouseout", "edge", (e) => e.target.removeClass("hover"));
-    cy.on("mouseout", "node", () => focus(cy, cy.$(":selected").first()));
+    cy.on("tap", (event) => {
+      if (event.target === cy) onSelect(null);
+    });
+    // Trackpad: two-finger swipe pans; pinch arrives as wheel with ctrlKey and zooms.
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (!e.ctrlKey) return cy.panBy({ x: -e.deltaX, y: -e.deltaY });
+      const box = container.current!.getBoundingClientRect();
+      cy.zoom({
+        level: Math.max(
+          cy.minZoom(),
+          Math.min(cy.maxZoom(), cy.zoom() * Math.exp(-e.deltaY / 100)),
+        ),
+        renderedPosition: { x: e.clientX - box.left, y: e.clientY - box.top },
+      });
+    };
+    const element = container.current!;
+    element.addEventListener("wheel", onWheel, { passive: false });
     let frame = 0;
     if (container.current) {
       const red = cy.edges(".unexpected");
@@ -391,6 +406,7 @@ export function GraphCanvas({
     };
     return () => {
       cancelAnimationFrame(frame);
+      element.removeEventListener("wheel", onWheel);
       observer.disconnect();
       cy.destroy();
       core.current = null;
@@ -458,7 +474,7 @@ export function GraphCanvas({
         </button>
       </div>
       <span className="canvas-hint">
-        Колесо — масштаб · перетаскивание — панорама · клик — подробности
+        Два пальца — перемещение · щипок — зум · клик — фокус
       </span>
     </div>
   );
