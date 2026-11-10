@@ -1,5 +1,10 @@
 {
   "$schema": "https://calm.finos.org/release/1.2/meta/calm.json",
+  "metadata": {
+    "archdrift": {
+      "version": 0
+    }
+  },
   "unique-id": "opentelemetry-demo",
   "name": "OpenTelemetry Astronomy Shop",
   "description": "Full topology of open-telemetry/opentelemetry-demo in the ArchDrift profile. gRPC methods are interfaces POST /<package>.<Service>/<Method>. Not modelled: Valkey (cart store), OpenSearch, otel-collector, Jaeger, Grafana, opamp-server, external LLM, and workers (the demo sets no archdrift.worker.name).",

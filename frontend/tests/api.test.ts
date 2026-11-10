@@ -30,24 +30,38 @@ describe("mock HTTP client", () => {
       "HTTP 404",
     );
   });
-  it("rejects a mismatched architecture version", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async (url: string) =>
-          new Response(
-            JSON.stringify(
-              url.includes("architecture")
-                ? architecture
-                : { ...analysis, architectureVersion: 2 },
+  it.each(["analysis", "model"])(
+    "rejects a mismatched %s version",
+    async (source) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async (url: string) =>
+            new Response(
+              JSON.stringify(
+                url.includes("architecture")
+                  ? source === "model"
+                    ? {
+                        ...architecture,
+                        model: {
+                          ...architecture.model,
+                          metadata: { archdrift: { version: 2 } },
+                        },
+                      }
+                    : architecture
+                  : {
+                      ...analysis,
+                      architectureVersion: source === "analysis" ? 2 : 1,
+                    },
+              ),
             ),
-          ),
-      ),
-    );
-    await expect(loadSnapshot(new AbortController().signal)).rejects.toThrow(
-      "Версии архитектуры",
-    );
-  });
+        ),
+      );
+      await expect(loadSnapshot(new AbortController().signal)).rejects.toThrow(
+        "Версии архитектуры",
+      );
+    },
+  );
   it("surfaces malformed JSON", async () => {
     vi.stubGlobal(
       "fetch",

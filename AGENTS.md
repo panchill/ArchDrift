@@ -9,7 +9,7 @@ ArchDrift — проект хакатона. Он сравнивает заде�
 - **Это MVP, а не продукт.** Цель — работающее демо на защите 13.11. Всё, что не приближает к демо, не делаем.
 - **Наблюдаемая система — только [OpenTelemetry Demo](https://github.com/open-telemetry/opentelemetry-demo) (Astronomy Shop).** Собственных демо-микросервисов нет и не будет.
 - Описание логики — в [README.md](README.md).
-- **Источники истины:** [backend/api/api.yaml](backend/api/api.yaml) и [backend/api/instrumentation.yaml](backend/api/instrumentation.yaml) (контракт 0.3.1). Код подстраивается под контракт, а не наоборот.
+- **Источники истины:** [backend/api/api.yaml](backend/api/api.yaml) и [backend/api/instrumentation.yaml](backend/api/instrumentation.yaml) (контракт 0.4.0). Код подстраивается под контракт, а не наоборот.
 
 ## Структура репозитория
 

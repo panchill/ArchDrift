@@ -20,6 +20,10 @@ calm init-ai
 
 `examples/opentelemetry-demo.architecture.json` — модель [OpenTelemetry Demo (Astronomy Shop)](https://github.com/open-telemetry/opentelemetry-demo/tree/main).
 
+Корневое `metadata.archdrift.version: 0` предназначено для первой загрузки в ArchDrift.
+При обновлении существующей модели передайте её текущую ревизию из `GET /api/v1/architecture`;
+при `409` загрузите свежую модель и объедините изменения перед повтором.
+
 Из корня репозитория:
 
 ```bash

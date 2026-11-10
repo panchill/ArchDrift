@@ -74,7 +74,18 @@ sequenceDiagram
 
 ## Модель архитектуры
 
-Ожидаемая модель — **FINOS CALM 1.2**. `PUT /api/v1/architecture` принимает исходный JSON без обёртки; `GET` возвращает его в `model` вместе с версией. Профиль MVP и привязки к OpenTelemetry описаны в `calmProfile` файла [instrumentation.yaml](backend/api/instrumentation.yaml).
+Ожидаемая модель — **FINOS CALM 1.2**. `PUT /api/v1/architecture` принимает CALM JSON без обёртки; `GET` возвращает его в `model` вместе с версией. В самом CALM обязательна ревизия `metadata.archdrift.version`. Профиль MVP и привязки к OpenTelemetry описаны в `calmProfile` файла [instrumentation.yaml](backend/api/instrumentation.yaml).
+
+Версия защищает от потери изменений при одновременном редактировании:
+
+1. Для первого создания передать `metadata.archdrift.version: 0`. Сервер сохранит модель с версией `1`.
+2. Для обновления получить модель через `GET`, отредактировать её и отправить `model` через `PUT`, оставив прочитанную версию. Увеличивать её самостоятельно не нужно.
+3. Сервер атомарно проверяет версию и сохраняет следующую. Например, из двух обновлений версии `3` одно сохранится как `4`, второе получит `409 architecture_version_conflict` с `currentVersion: 4`.
+4. При конфликте загрузить свежую модель и объединить изменения. Простая подстановка нового номера и повторный PUT могут затереть чужую работу.
+
+В ответах `version` всегда равен `model.metadata.archdrift.version`. Это счётчик ревизий ArchDrift, отдельный от версии стандарта CALM `1.2`. История моделей не хранится. Отсутствующая или некорректная ревизия даёт `400`; конфликт не меняет данные и время обновления.
+
+В текущем репозитории это контракт для реализации обработчика: исполняемого бэкенда и транзакционной проверки пока нет. Фронтенд использует согласованные JSON-моки.
 
 Узлы CALM: `service`, `worker`, `database` (PostgreSQL), `kafka-topic`. HTTP endpoints — интерфейсы сервиса. Связи — `connects`; `composed-of` связывает worker с сервисом. Привязки к телеметрии обязательны в `metadata.archdrift`.
 
@@ -151,6 +162,7 @@ sequenceDiagram
 ```json
 {
   "$schema": "https://calm.finos.org/release/1.2/meta/calm.json",
+  "metadata": {"archdrift": {"version": 0}},
   "nodes": [
     {
       "unique-id": "gateway", "node-type": "service",

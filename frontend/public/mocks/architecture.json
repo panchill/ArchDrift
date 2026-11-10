@@ -3,6 +3,11 @@
   "updatedAt": "2026-11-09T19:50:00Z",
   "model": {
     "$schema": "https://calm.finos.org/release/1.2/meta/calm.json",
+    "metadata": {
+      "archdrift": {
+        "version": 1
+      }
+    },
     "nodes": [
       {
         "unique-id": "svc-gateway",

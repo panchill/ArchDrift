@@ -14,7 +14,10 @@ export async function loadSnapshot(signal: AbortSignal): Promise<Snapshot> {
     readJson<Architecture>("architecture.json", signal),
     readJson<Analysis>("analysis.json", signal),
   ]);
-  if (architecture.version !== analysis.architectureVersion) {
+  if (
+    architecture.version !== analysis.architectureVersion ||
+    architecture.version !== architecture.model.metadata?.archdrift?.version
+  ) {
     throw new Error(
       "Версии архитектуры и анализа не совпадают. Обновите данные.",
     );
