@@ -10,5 +10,6 @@ FROM alpine:3.22
 RUN apk add --no-cache ca-certificates wget
 COPY --from=build /out/archdrift /usr/local/bin/archdrift
 USER nobody
+ENV GIN_MODE=release
 EXPOSE 8080
 ENTRYPOINT ["archdrift"]

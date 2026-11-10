@@ -78,6 +78,21 @@ jobs:
     name: Backend
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: archdrift_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres@localhost:5432/archdrift_test?sslmode=disable
     defaults:
       run:
         working-directory: backend
@@ -88,7 +103,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # Evaluate after checkout: the backend currently contains only API contracts.
       - name: Set up Go
         if: hashFiles('backend/go.mod') != ''
         uses: actions/setup-go@v7
@@ -113,7 +127,7 @@ jobs:
 
       - name: Run backend tests
         if: hashFiles('backend/go.mod') != ''
-        run: go test ./...
+        run: go test -race ./...
 
       - name: Report missing backend implementation
         if: hashFiles('backend/go.mod') == ''

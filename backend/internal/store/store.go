@@ -2,11 +2,9 @@ package store
 
 import (
 	"context"
-	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,64 +12,12 @@ import (
 	"github.com/panchill/ArchDrift/backend/internal/model"
 )
 
-//go:embed migrations/001_spans.sql
-var migrations embed.FS
-
 type Store struct {
 	pool *pgxpool.Pool
 }
 
 func New(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
-}
-
-func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
-	_, err := pool.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			version integer PRIMARY KEY,
-			applied_at timestamptz NOT NULL DEFAULT now()
-		)`)
-	if err != nil {
-		return err
-	}
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(7040911)`); err != nil {
-		return err
-	}
-	var applied bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = 1)`).Scan(&applied); err != nil {
-		return err
-	}
-	if !applied {
-		body, err := migrations.ReadFile("migrations/001_spans.sql")
-		if err != nil {
-			return err
-		}
-		if err := execSQL(ctx, tx, string(body)); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `INSERT INTO schema_migrations(version) VALUES (1)`); err != nil {
-			return err
-		}
-	}
-	return tx.Commit(ctx)
-}
-
-func execSQL(ctx context.Context, tx pgx.Tx, script string) error {
-	for _, stmt := range strings.Split(script, ";") {
-		stmt = strings.TrimSpace(stmt)
-		if stmt == "" {
-			continue
-		}
-		if _, err := tx.Exec(ctx, stmt); err != nil {
-			return fmt.Errorf("миграция: %w", err)
-		}
-	}
-	return nil
 }
 
 const insertSQL = `
