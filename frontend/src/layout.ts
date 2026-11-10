@@ -1,141 +1,146 @@
-import type { DisplayGraph } from "./graph";
+import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
+import type { DisplayGraph, NodeMeta } from "./graph";
+import type { NodeType } from "./types";
 
-export const NODE_WIDTH = 280;
-export const NODE_HEIGHT = 64;
-export const CHILD_STEP = 82;
-const COLUMN_STEP = 320;
-const GROUP_GAP = 70;
+export const NODE_WIDTH = 300; // endpoint / worker card inside a service group
+export const NODE_HEIGHT = 44;
+export const GROUP_PADDING = 14;
 
-/** Place service groups in HTTP dependency order; keep children in readable rows.
- * Compound bounds come from children, never from a second force simulation.
- * Cyclic services share a column rather than growing ranks indefinitely.
- */
-export function architecturePositions(
+export const nodeSize: Record<NodeType, { w: number; h: number }> = {
+  service: { w: 210, h: 84 },
+  endpoint: { w: NODE_WIDTH, h: NODE_HEIGHT },
+  worker: { w: NODE_WIDTH, h: NODE_HEIGHT },
+  postgres_database: { w: 130, h: 92 },
+  kafka_topic: { w: 200, h: 64 },
+};
+
+export type Point = { x: number; y: number };
+export type Route = { start: Point; bends: Point[]; end: Point };
+export type Box = { x1: number; y1: number; x2: number; y2: number };
+export interface Layout {
+  positions: Map<string, Point>;
+  routes: Map<string, Route>;
+  groups: Map<string, Box>; // ELK frames of services with children
+}
+
+const elk = new ELK();
+const options = {
+  "elk.algorithm": "layered",
+  "elk.direction": "RIGHT",
+  "elk.edgeRouting": "ORTHOGONAL",
+  "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+  "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+  "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+  "elk.separateConnectedComponents": "false",
+  "elk.layered.spacing.nodeNodeBetweenLayers": "90",
+  "elk.spacing.nodeNode": "36", // leaves room for group titles above frames
+  "elk.spacing.edgeNode": "18",
+  "elk.spacing.edgeEdge": "10",
+  "elk.layered.spacing.edgeNodeBetweenLayers": "18",
+  "elk.layered.spacing.edgeEdgeBetweenLayers": "10",
+};
+
+/** Declared calls into a shared dependency (flagd) are drawn only on focus. */
+export const hiddenEdge = (
+  edge: DisplayGraph["edges"][number],
+  owner: (id: string) => string,
+  meta?: Map<string, NodeMeta>,
+) => edge.status === "declared" && !!meta?.get(owner(edge.target))?.hub;
+
+/** ELK layered layout, left to right, with orthogonal edge routes around nodes. */
+export async function layoutGraph(
   graph: DisplayGraph,
-): Map<string, { x: number; y: number }> {
+  meta?: Map<string, NodeMeta>,
+): Promise<Layout> {
   const nodes = [...graph.nodes].sort((a, b) =>
     a.node.id.localeCompare(b.node.id),
   );
   const byId = new Map(nodes.map((n) => [n.node.id, n.node]));
-  const services = nodes.filter((n) => n.node.type === "service");
-  const serviceIds = new Set(services.map((n) => n.node.id));
-  // Demo has cycles and many endpoints: balance groups across four lanes.
-  // Keep the two ends of a violation together for the initial detailed viewport.
-  if (services.length > 12) {
-    const detailed = nodes.some((n) => "parentId" in n.node);
-    const priority = new Set(
-      graph.edges
-        .filter((e) => e.status === "unexpected")
-        .flatMap((e) => [e.source, e.target])
-        .map((id) => {
-          const node = byId.get(id)!;
-          return "parentId" in node ? node.parentId : id;
-        }),
-    );
-    const groups = [...services].sort(
-      (a, b) =>
-        Number(priority.has(b.node.id)) - Number(priority.has(a.node.id)) ||
-        a.node.id.localeCompare(b.node.id),
-    );
-    const positions = new Map<string, { x: number; y: number }>();
-    const heights = [70, 70, 70, 70];
-    for (const item of [
-      ...groups,
-      ...nodes.filter(
-        (n) => !serviceIds.has(n.node.id) && !("parentId" in n.node),
-      ),
-    ]) {
-      const lane = heights.indexOf(Math.min(...heights));
-      const x = 160 + lane * (detailed ? 350 : 220),
-        y = heights[lane];
-      const children = nodes.filter(
-        (n) => "parentId" in n.node && n.node.parentId === item.node.id,
-      );
-      children.forEach((child, i) =>
-        positions.set(child.node.id, { x, y: y + i * CHILD_STEP }),
-      );
-      positions.set(item.node.id, {
-        x,
-        y: y + (Math.max(0, children.length - 1) * CHILD_STEP) / 2,
-      });
-      heights[lane] += detailed
-        ? Math.max(NODE_HEIGHT, children.length * CHILD_STEP) + GROUP_GAP
-        : 80;
-    }
-    return positions;
-  }
   const owner = (id: string) => {
     const node = byId.get(id);
     return node && "parentId" in node ? node.parentId : id;
   };
-  const outgoing = new Map(
-    [...serviceIds].map((id) => [id, new Set<string>()]),
+  const elkNodes = new Map<string, ElkNode>(
+    nodes.map(({ node }) => [
+      node.id,
+      {
+        id: node.id,
+        width: nodeSize[node.type].w,
+        height: nodeSize[node.type].h,
+        // Shared dependencies sit in the last column, so their calls still point right.
+        ...(meta?.get(node.id)?.hub
+          ? { layoutOptions: { "elk.layered.layering.layerConstraint": "LAST" } }
+          : {}),
+      },
+    ]),
   );
-  const incoming = new Map([...serviceIds].map((id) => [id, 0]));
-  for (const edge of graph.edges) {
-    const source = owner(edge.source),
-      target = owner(edge.target);
-    if (
-      edge.type !== "http_call" ||
-      source === target ||
-      !serviceIds.has(source) ||
-      !serviceIds.has(target)
-    )
-      continue;
-    if (!outgoing.get(source)!.has(target)) {
-      outgoing.get(source)!.add(target);
-      incoming.set(target, incoming.get(target)! + 1);
+  const root: ElkNode = { id: "root", layoutOptions: options, children: [] };
+  for (const { node } of nodes) {
+    const item = elkNodes.get(node.id)!;
+    const parent = "parentId" in node ? elkNodes.get(node.parentId) : root;
+    if (!parent) continue;
+    if (parent !== root) {
+      delete parent.width;
+      delete parent.height;
+      parent.layoutOptions = {
+        // Uniform, like Cytoscape compound padding, so both agree on the frame.
+        "elk.padding": `[top=${GROUP_PADDING},left=${GROUP_PADDING},bottom=${GROUP_PADDING},right=${GROUP_PADDING}]`,
+      };
     }
+    (parent.children ??= []).push(item);
   }
-  const ranks = new Map([...serviceIds].map((id) => [id, 0]));
-  const queue = [...serviceIds].filter((id) => incoming.get(id) === 0);
-  for (let i = 0; i < queue.length; i++) {
-    const id = queue[i];
-    for (const target of outgoing.get(id)!) {
-      ranks.set(target, Math.max(ranks.get(target)!, ranks.get(id)! + 1));
-      incoming.set(target, incoming.get(target)! - 1);
-      if (incoming.get(target) === 0) queue.push(target);
-    }
-  }
-  // Bound long call chains too: extra groups stack vertically in the last lane.
-  for (const id of serviceIds) ranks.set(id, Math.min(ranks.get(id)!, 2));
-  const positions = new Map<string, { x: number; y: number }>();
-  const nextY = new Map<number, number>();
-  for (const item of services) {
-    const rank = ranks.get(item.node.id)!;
-    const x = 150 + rank * COLUMN_STEP;
-    const y = nextY.get(rank) ?? 70;
-    const children = nodes.filter(
-      (n) => "parentId" in n.node && n.node.parentId === item.node.id,
-    );
-    children.forEach((child, index) =>
-      positions.set(child.node.id, { x, y: y + index * CHILD_STEP }),
-    );
-    positions.set(item.node.id, {
-      x,
-      y: y + (Math.max(0, children.length - 1) * CHILD_STEP) / 2,
-    });
-    nextY.set(
-      rank,
-      y + Math.max(NODE_HEIGHT, children.length * CHILD_STEP) + GROUP_GAP,
-    );
-  }
-  const resourceX = services.length
-    ? 150 + (Math.max(...ranks.values()) + 1) * COLUMN_STEP
-    : 150;
-  // Databases and topics stay in distinct adjacent sections of the resource lane.
-  const resources = nodes
+  root.edges = graph.edges
     .filter(
-      (n) =>
-        n.node.type === "postgres_database" || n.node.type === "kafka_topic",
+      (e) =>
+        e.source !== e.target &&
+        byId.has(e.source) &&
+        byId.has(e.target) &&
+        !hiddenEdge(e, owner, meta),
     )
-    .sort(
-      (a, b) =>
-        a.node.type.localeCompare(b.node.type) * -1 ||
-        a.node.id.localeCompare(b.node.id),
-    );
-  resources.forEach((item, index) =>
-    positions.set(item.node.id, { x: resourceX, y: 70 + index * 84 }),
-  );
-  return positions;
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] }));
+  const result = await elk.layout(root);
+
+  const positions = new Map<string, Point>();
+  const groups = new Map<string, Box>();
+  const offsets = new Map<string, Point>([["root", { x: 0, y: 0 }]]);
+  const walk = (node: ElkNode, origin: Point) => {
+    for (const child of node.children ?? []) {
+      const x = origin.x + (child.x ?? 0),
+        y = origin.y + (child.y ?? 0);
+      offsets.set(child.id, { x, y });
+      positions.set(child.id, {
+        x: x + (child.width ?? 0) / 2,
+        y: y + (child.height ?? 0) / 2,
+      });
+      if (child.children?.length)
+        groups.set(child.id, {
+          x1: x,
+          y1: y,
+          x2: x + (child.width ?? 0),
+          y2: y + (child.height ?? 0),
+        });
+      walk(child, { x, y });
+    }
+  };
+  walk(result, { x: 0, y: 0 });
+  const routes = new Map<string, Route>();
+  const collect = (node: ElkNode) => {
+    for (const edge of node.edges ?? []) {
+      // With INCLUDE_CHILDREN, section coordinates are relative to the edge container.
+      const container = (edge as { container?: string }).container ?? node.id;
+      const o = offsets.get(container) ?? { x: 0, y: 0 };
+      const section = edge.sections?.[0];
+      if (!section) continue;
+      const shift = (p: Point) => ({ x: p.x + o.x, y: p.y + o.y });
+      routes.set(edge.id, {
+        start: shift(section.startPoint),
+        bends: (section.bendPoints ?? []).map(shift),
+        end: shift(section.endPoint),
+      });
+    }
+    node.children?.forEach(collect);
+  };
+  collect(result);
+  return { positions, routes, groups };
 }

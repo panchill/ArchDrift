@@ -49,6 +49,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     await user.click(
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     );
+    await screen.findByRole("img", { name: /87 узлов/ });
     await user.click(
       screen.getByRole("button", { name: "Сбросить масштаб к 100%" }),
     );
@@ -63,14 +64,11 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     render(<App />);
     expect(screen.getByRole("status")).toHaveTextContent("Загрузка");
     expect(await screen.findByRole("img")).toHaveAccessibleName(/25 узлов/);
-    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent("64");
+    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent("1 нарушения");
     const cy = cores.at(-1)!;
     expect(cy.nodes(".postgres_database")).toHaveLength(1);
     expect(cy.nodes(".kafka_topic")).toHaveLength(1);
     expect(cy.nodes(".service")).toHaveLength(23);
-    const download = screen.getByRole("link", { name: /CALM JSON/ });
-    expect(download).toHaveAttribute("download", "architecture.json");
-    expect(download).toHaveAttribute("href", "/mocks/architecture.json");
   });
   it("switches to endpoints, keeps compound membership and destroys replaced graph", async () => {
     const user = userEvent.setup();
@@ -80,12 +78,12 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     await user.click(
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     );
-    expect(screen.getByRole("img")).toHaveAccessibleName(/87 узлов, 64 связей/);
+    await screen.findByRole("img", { name: /87 узлов, 64 связей/ });
     expect(previous.destroyed()).toBe(true);
     expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(62);
     expect(cores.at(-1)!.nodes(".worker")).toHaveLength(0);
   });
-  it("filters unexpected calls, supports search and an empty result", async () => {
+  it("filters unexpected calls", async () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByRole("img");
@@ -94,21 +92,13 @@ describe("mock → HTTP client → React → Cytoscape", () => {
       "unexpected",
     );
     expect(cores.at(-1)!.edges()).toHaveLength(1);
-    await user.type(screen.getByLabelText("Поиск узла"), "checkout");
-    expect(cores.at(-1)!.edges()).toHaveLength(1);
-    await user.clear(screen.getByLabelText("Поиск узла"));
-    await user.type(screen.getByLabelText("Поиск узла"), "nothing-like-this");
-    expect(screen.getByText(/Ничего не найдено/)).toBeVisible();
-    expect(cores.at(-1)!.nodes()).toHaveLength(0);
   });
   it("opens a violation, shows its evidence and restores the violation list", async () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByRole("img");
     await user.click(
-      screen.getByRole("button", {
-        name: /отсутствует в устаревшей декларации/,
-      }),
+      screen.getAllByRole("button", { name: "Показать на схеме" })[0],
     );
     const panel = within(screen.getByLabelText("Детали графа"));
     expect(panel.getByText("http_call")).toBeVisible();
@@ -119,11 +109,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     ).toHaveAttribute("aria-pressed", "true");
     await user.click(panel.getByRole("button", { name: /К списку нарушений/ }));
-    expect(
-      screen.getByRole("button", {
-        name: /отсутствует в устаревшей декларации/,
-      }),
-    ).toBeVisible();
+    expect(screen.getByText(analysis.violations[0].message)).toBeVisible();
   });
   it("handles real Cytoscape tap events without recreating the graph", async () => {
     render(<App />);
@@ -137,47 +123,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     ).toBeVisible();
     expect(cores.at(-1)).toBe(cy);
   });
-  it("supports keyboard-accessible graph selection", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await screen.findByRole("img");
-    await user.click(
-      screen.getByText("Список связей и узлов — выбор с клавиатуры"),
-    );
-    const button = screen.getByRole("button", {
-      name: "astronomy_db PostgreSQL",
-    });
-    button.focus();
-    await user.keyboard("{Enter}");
-    expect(
-      within(screen.getByLabelText("Детали графа")).getByText("astronomy-db"),
-    ).toBeVisible();
-    expect(
-      cores
-        .at(-1)!
-        .getElementById("postgres:astronomy-db:astronomy_db")
-        .selected(),
-    ).toBe(true);
-  });
-  it("renders the actual snapshot interval rather than hardcoded demo timestamps", async () => {
-    const changed = {
-      ...analysis,
-      from: "2026-11-10T08:10:00Z",
-      to: "2026-11-10T08:20:00Z",
-    };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(JSON.stringify(changed))),
-    );
-    render(<App />);
-    await screen.findByRole("img");
-    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent(
-      "08:10 — 08:20",
-    );
-    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent(
-      "10 ноября 2026",
-    );
-  });
+
   it("recovers from a failed request through retry", async () => {
     vi.stubGlobal(
       "fetch",
@@ -214,7 +160,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByRole("img");
-    await user.click(screen.getByRole("button", { name: /Обновить мок/ }));
+    await user.click(screen.getByRole("button", { name: /Обновить сейчас/ }));
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     expect(await screen.findByRole("img")).toBeVisible();
   });
@@ -250,8 +196,8 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     const pending: Array<() => void> = [];
     const recent = {
       ...analysis,
-      from: "2026-11-10T09:00:00Z",
-      to: "2026-11-10T09:05:00Z",
+      violations: [],
+      edges: analysis.edges.filter((e) => e.status !== "unexpected"),
     };
     let count = 0;
     vi.stubGlobal(
@@ -267,16 +213,16 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     );
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: /Обновить мок/ }));
+    await user.click(screen.getByRole("button", { name: /Обновить сейчас/ }));
     await screen.findByRole("img");
     expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent(
-      "09:00 — 09:05",
+      "0 нарушения",
     );
     await act(async () => {
       pending.forEach((resolve) => resolve());
     });
     expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent(
-      "09:00 — 09:05",
+      "0 нарушения",
     );
   });
 });

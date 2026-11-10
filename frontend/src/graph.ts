@@ -16,6 +16,87 @@ export const statusLabels: Record<EdgeStatus, string> = {
   unexpected: "Вне декларации",
   indeterminate: "Недостаточно данных",
 };
+const edgeLabels = {
+  http_call: "HTTP",
+  db_query: "SQL",
+  publish: "publish",
+  consume: "consume",
+};
+export interface NodeMeta {
+  caption: string;
+  opsPerMinute: number;
+  violations: number;
+  hub: boolean;
+  hubs: string[];
+}
+const HUB_CALLERS = 5;
+
+/** Card captions and status lines, computed from the full snapshot so the
+ * overview still knows how many endpoints a collapsed service has. */
+export function nodeMeta(analysis: Analysis): Map<string, NodeMeta> {
+  const byId = new Map(analysis.nodes.map((n) => [n.node.id, n.node]));
+  const owner = (id: string) => {
+    const node = byId.get(id);
+    return node && "parentId" in node ? node.parentId : id;
+  };
+  const minutes =
+    Math.max(1, Date.parse(analysis.to) - Date.parse(analysis.from)) / 60000;
+  const meta = new Map<string, NodeMeta>();
+  const get = (id: string) => {
+    if (!meta.has(id))
+      meta.set(id, {
+        caption: "",
+        opsPerMinute: 0,
+        violations: 0,
+        hub: false,
+        hubs: [],
+      });
+    return meta.get(id)!;
+  };
+  for (const { node } of analysis.nodes) {
+    const item = get(node.id);
+    if (node.type === "kafka_topic") item.caption = `Kafka · ${node.cluster}`;
+    if (node.type === "postgres_database") item.caption = "PostgreSQL";
+    if (node.type === "service") {
+      const kids = analysis.nodes.filter(
+        (n) => "parentId" in n.node && n.node.parentId === node.id,
+      );
+      const endpoints = kids.filter((n) => n.node.type === "endpoint").length;
+      const workers = kids.length - endpoints;
+      item.caption =
+        [
+          endpoints ? `${endpoints} endpoint${endpoints > 1 ? "s" : ""}` : "",
+          workers ? `${workers} воркер` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ") || "сервис";
+    }
+  }
+  for (const edge of analysis.edges) {
+    const ends = [edge.source, owner(edge.source), edge.target, owner(edge.target)];
+    for (const id of new Set(ends))
+      get(id).opsPerMinute += edge.observedOperations / minutes;
+    if (edge.status === "unexpected")
+      for (const id of new Set(ends.slice(0, 2))) get(id).violations++;
+  }
+  // Hub: a shared dependency called by many services, all calls as declared.
+  const callers = new Map<string, Set<string>>();
+  const clean = new Map<string, boolean>();
+  for (const edge of analysis.edges) {
+    const source = owner(edge.source),
+      target = owner(edge.target);
+    if (source === target || byId.get(target)?.type !== "service") continue;
+    callers.set(target, (callers.get(target) ?? new Set()).add(source));
+    clean.set(target, (clean.get(target) ?? true) && edge.status === "declared");
+  }
+  for (const [target, sources] of callers) {
+    if (sources.size < HUB_CALLERS || !clean.get(target)) continue;
+    get(target).hub = true;
+    for (const source of sources) get(source).hubs.push(byId.get(target)!.label);
+  }
+  return meta;
+}
+
 export const edgeKey = (
   edge: Pick<Edge, "source" | "target" | "type" | "dbOperation">,
 ) =>
@@ -148,7 +229,7 @@ export function graphElements(graph: DisplayGraph): ElementDefinition[] {
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        label: edge.dbOperation ?? edge.type.replace("_call", ""),
+        label: edge.dbOperation ?? edgeLabels[edge.type],
         status: edge.status,
       },
       classes: edge.status,

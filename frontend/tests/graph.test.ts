@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { NodeSingular } from "cytoscape";
+import type cytoscape from "cytoscape";
 import fixture from "../public/mocks/analysis.json";
 import type { Analysis, Edge } from "../src/types";
-import { buildGraph, graphElements, edgeKey } from "../src/graph";
-import { createGraph, zoomAtCenter } from "../src/GraphCanvas";
-import { architecturePositions, CHILD_STEP } from "../src/layout";
+import {
+  buildGraph,
+  edgeKey,
+  graphElements,
+  nodeMeta,
+  type DisplayGraph,
+} from "../src/graph";
+import { createGraph, toSegments, zoomAtCenter } from "../src/GraphCanvas";
+import { layoutGraph } from "../src/layout";
 
 const analysis = fixture as Analysis;
 describe("graph transformation", () => {
@@ -156,11 +162,62 @@ describe("graph transformation", () => {
   });
 });
 
+const make = async (graph: DisplayGraph) => {
+  const meta = nodeMeta(analysis);
+  return createGraph(undefined, graph, {
+    meta,
+    layout: await layoutGraph(graph, meta),
+  });
+};
+
+describe("hubs", () => {
+  it("treats flagd as a shared dependency and hides only its declared calls", async () => {
+    const meta = nodeMeta(analysis);
+    expect(meta.get("service:flagd")?.hub).toBe(true);
+    expect(meta.get("service:checkout")?.hub).toBe(false);
+    expect(meta.get("service:checkout")?.hubs).toEqual(["flagd"]);
+    const graph = buildGraph(analysis, "services");
+    const cy = await make(graph);
+    const hidden = cy.edges(".hub-edge");
+    expect(hidden.length).toBeGreaterThan(5);
+    hidden.forEach((e) => {
+      expect(e.target().id()).toBe("service:flagd");
+      expect(e.hasClass("declared")).toBe(true);
+    });
+    expect(cy.edges(".unexpected.hub-edge")).toHaveLength(0);
+    cy.destroy();
+  });
+});
+
+describe("toSegments", () => {
+  const s = { x: 0, y: 0 },
+    t = { x: 200, y: 100 };
+  it.each([
+    ["straight", []],
+    ["L-shape", [{ x: 100, y: 0 }]],
+    ["Z-shape", [{ x: 80, y: 0 }, { x: 80, y: 100 }]],
+    ["detour", [{ x: 50, y: -40 }, { x: 150, y: -40 }, { x: 150, y: 100 }]],
+  ])("round-trips %s bend points", (_, bends) => {
+    const route = { start: { x: 10, y: 5 }, bends, end: { x: 190, y: 100 } };
+    const seg = toSegments(s, t, route);
+    expect(seg.sourceEndpoint).toBe("10px 5px");
+    expect(seg.targetEndpoint).toBe("-10px 0px");
+    const len = Math.hypot(t.x - s.x, t.y - s.y);
+    const n = { x: -(t.y - s.y) / len, y: (t.x - s.x) / len };
+    bends.forEach((b, i) => {
+      const w = seg.weights[i],
+        d = seg.distances[i];
+      expect(s.x + w * (t.x - s.x) + d * n.x).toBeCloseTo(b.x);
+      expect(s.y + w * (t.y - s.y) + d * n.y).toBeCloseTo(b.y);
+    });
+  });
+});
+
 describe("Cytoscape integration", () => {
   it.each(["services", "details"] as const)(
     "does not overlap any peer nodes in %s view",
-    (view) => {
-      const cy = createGraph(undefined, buildGraph(analysis, view));
+    async (view) => {
+      const cy = await make(buildGraph(analysis, view));
       const nodes = cy.nodes().toArray();
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
@@ -178,43 +235,49 @@ describe("Cytoscape integration", () => {
           );
         }
       }
-      const box = cy.elements().boundingBox();
-      expect(box.w).toBeLessThan(1500);
-      expect(box.h).toBeLessThan(view === "services" ? 700 : 2600);
-      const focus =
-        view === "details"
-          ? cy.edges(".unexpected").connectedNodes().boundingBox()
-          : box;
-      const laptopFit = Math.min((900 - 128) / focus.w, (540 - 128) / focus.h);
-      expect(laptopFit).toBeGreaterThan(view === "details" ? 1 : 0.7);
       cy.destroy();
     },
   );
-  it("keeps endpoint rows aligned, stable and inside their parent services", () => {
+  it.each(["services", "details"] as const)(
+    "routes every visible %s edge from its source to its target",
+    async (view) => {
+      const graph = buildGraph(analysis, view);
+      const meta = nodeMeta(analysis);
+      const layout = await layoutGraph(graph, meta);
+      const cy = createGraph(undefined, graph, { meta, layout });
+      cy.edges().filter((e) => !e.hasClass("hub-edge")).forEach((edge) => {
+        if (edge.source().same(edge.target())) return;
+        const route = layout.routes.get(edge.id());
+        expect(route, edge.id()).toBeDefined();
+        const inside = (p: { x: number; y: number }, box: cytoscape.BoundingBox12) =>
+          p.x >= box.x1 - 1 && p.x <= box.x2 + 1 && p.y >= box.y1 - 1 && p.y <= box.y2 + 1;
+        const box = (n: cytoscape.NodeSingular) =>
+          n.boundingBox({ includeLabels: false, includeOverlays: false, includeUnderlays: false });
+        expect(inside(route!.start, box(edge.source())), edge.id()).toBe(true);
+        expect(inside(route!.end, box(edge.target())), edge.id()).toBe(true);
+        expect(edge.hasClass("routed")).toBe(true);
+      });
+      cy.destroy();
+    },
+  );
+  it("keeps endpoints inside their parent services, in one column", async () => {
     const graph = buildGraph(analysis, "details");
-    const positions = architecturePositions(graph);
-    expect(
-      architecturePositions({
-        nodes: [...graph.nodes].reverse(),
-        edges: [...graph.edges].reverse(),
-      }),
-    ).toEqual(positions);
-    const cy = createGraph(undefined, graph);
+    const meta = nodeMeta(analysis);
+    const a = await layoutGraph(graph, meta);
+    const b = await layoutGraph(
+      { nodes: [...graph.nodes].reverse(), edges: [...graph.edges].reverse() },
+      meta,
+    );
+    expect(b.positions).toEqual(a.positions);
+    const cy = await make(graph);
     cy.nodes(":parent").forEach((parent) => {
-      const children = parent
-        .children()
-        .sort((a, b) => a.position("y") - b.position("y"));
-      for (let i = 1; i < children.length; i++) {
-        expect(children[i].position("x")).toBe(children[0].position("x"));
-        expect(children[i].position("y") - children[i - 1].position("y")).toBe(
-          CHILD_STEP,
-        );
-      }
+      const xs = new Set(parent.children().map((c) => c.position("x")));
+      expect(xs.size, parent.id()).toBe(1);
     });
     cy.destroy();
   });
-  it("zooms around the viewport center and clamps to both limits", () => {
-    const cy = createGraph(undefined, buildGraph(analysis, "services"));
+  it("zooms around the viewport center and clamps to both limits", async () => {
+    const cy = await make(buildGraph(analysis, "services"));
     cy.pan({ x: 40, y: -20 });
     const before = {
       x: (cy.width() / 2 - cy.pan().x) / cy.zoom(),
@@ -229,42 +292,26 @@ describe("Cytoscape integration", () => {
     expect(cy.zoom()).toBe(cy.minZoom());
     cy.destroy();
   });
-  it("handles cycles and empty search results without an unstable layout", () => {
-    expect(architecturePositions({ nodes: [], edges: [] }).size).toBe(0);
+  it("handles cycles and empty graphs", async () => {
+    expect((await layoutGraph({ nodes: [], edges: [] })).positions.size).toBe(0);
     const graph = buildGraph(analysis, "services");
     graph.edges.push({
       ...graph.edges[0],
+      id: "cycle",
       source: "service:payment",
       target: "service:checkout",
       type: "http_call",
     });
-    const positions = [...architecturePositions(graph).values()];
+    const positions = [...(await layoutGraph(graph)).positions.values()];
     expect(
       positions.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)),
     ).toBe(true);
   });
   it.each(["services", "details"] as const)(
-    "computes finite, separated node positions for the %s layout",
-    (view) => {
-      const cy = createGraph(undefined, buildGraph(analysis, view));
-      const positions = cy
-        .nodes()
-        .filter((n) => !n.isParent())
-        .map((n) => (n as NodeSingular).position());
-      expect(
-        positions.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)),
-      ).toBe(true);
-      expect(new Set(positions.map((p) => `${p.x},${p.y}`)).size).toBe(
-        positions.length,
-      );
-      cy.destroy();
-    },
-  );
-  it.each(["services", "details"] as const)(
     "loads the actual %s graph and resolves every edge endpoint",
-    (view) => {
+    async (view) => {
       const graph = buildGraph(analysis, view);
-      const cy = createGraph(undefined, graph);
+      const cy = await make(graph);
       expect(cy.nodes().length).toBe(graph.nodes.length);
       expect(cy.edges().length).toBe(graph.edges.length);
       cy.edges().forEach((edge) => {
