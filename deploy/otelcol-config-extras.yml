@@ -1,7 +1,3 @@
-# Дополнительный экспорт трейсов Demo в archdrift.
-# Collector заменяет массивы целиком, поэтому прежние экспортёры трейсов повторены:
-# debug, otlp_grpc/jaeger, span_metrics.
-
 exporters:
   otlp_http/archdrift:
     endpoint: http://archdrift:8080

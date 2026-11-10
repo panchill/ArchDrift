@@ -2,7 +2,6 @@ DEMO_REF ?= 3.1.0
 DEMO_DIR := opentelemetry-demo
 ROOT := $(abspath .)
 
-# Compose Demo читает свои .env из каталога клона. Наш файл подключается последним.
 COMPOSE = cd $(DEMO_DIR) && \
 	ARCHDRIFT_ROOT=$(ROOT) \
 	OTEL_COLLECTOR_CONFIG_EXTRAS=$(ROOT)/deploy/otelcol-config-extras.yml \

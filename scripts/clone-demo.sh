@@ -1,6 +1,4 @@
 #!/bin/sh
-# Клонирует зафиксированный релиз OpenTelemetry Demo в ./opentelemetry-demo.
-# Уже существующий каталог не перезаписывается.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)

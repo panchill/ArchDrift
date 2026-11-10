@@ -1,7 +1,3 @@
-# Подключается последним файлом к compose OpenTelemetry Demo.
-# Сервисы попадают в его сеть, Collector видит http://archdrift:8080.
-# ARCHDRIFT_ROOT задаёт Makefile: контексты сборки лежат в этом репозитории.
-
 services:
   archdrift-postgres:
     image: postgres:16-alpine
