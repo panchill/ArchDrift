@@ -61,17 +61,17 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     expect(screen.getByLabelText("Текущий масштаб")).toHaveTextContent("125%");
     await user.click(screen.getByRole("button", { name: "Уменьшить" }));
     expect(screen.getByLabelText("Текущий масштаб")).toHaveTextContent("100%");
-    expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(8);
+    expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(62);
   });
   it("loads responses and renders all resource kinds and summary", async () => {
     render(<App />);
     expect(screen.getByRole("status")).toHaveTextContent("Загрузка");
-    expect(await screen.findByRole("img")).toHaveAccessibleName(/11 узлов/);
-    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent("17");
+    expect(await screen.findByRole("img")).toHaveAccessibleName(/25 узлов/);
+    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent("64");
     const cy = cores.at(-1)!;
-    expect(cy.nodes(".postgres_database")).toHaveLength(3);
-    expect(cy.nodes(".kafka_topic")).toHaveLength(3);
-    expect(cy.nodes(".service")).toHaveLength(5);
+    expect(cy.nodes(".postgres_database")).toHaveLength(1);
+    expect(cy.nodes(".kafka_topic")).toHaveLength(1);
+    expect(cy.nodes(".service")).toHaveLength(23);
     const download = screen.getByRole("link", { name: /CALM JSON/ });
     expect(download).toHaveAttribute("download", "architecture.json");
     const href = download.getAttribute("href")!;
@@ -88,10 +88,10 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     await user.click(
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     );
-    expect(screen.getByRole("img")).toHaveAccessibleName(/21 узлов, 17 связей/);
+    expect(screen.getByRole("img")).toHaveAccessibleName(/87 узлов, 64 связей/);
     expect(previous.destroyed()).toBe(true);
-    expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(8);
-    expect(cores.at(-1)!.nodes(".worker")).toHaveLength(2);
+    expect(cores.at(-1)!.nodes(".endpoint")).toHaveLength(62);
+    expect(cores.at(-1)!.nodes(".worker")).toHaveLength(0);
   });
   it("filters unexpected calls, supports search and an empty result", async () => {
     const user = userEvent.setup();
@@ -101,8 +101,8 @@ describe("mock → HTTP client → React → Cytoscape", () => {
       screen.getByLabelText("Статус связи"),
       "unexpected",
     );
-    expect(cores.at(-1)!.edges()).toHaveLength(2);
-    await user.type(screen.getByLabelText("Поиск узла"), "payments");
+    expect(cores.at(-1)!.edges()).toHaveLength(1);
+    await user.type(screen.getByLabelText("Поиск узла"), "checkout");
     expect(cores.at(-1)!.edges()).toHaveLength(1);
     await user.clear(screen.getByLabelText("Поиск узла"));
     await user.type(screen.getByLabelText("Поиск узла"), "nothing-like-this");
@@ -113,16 +113,24 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByRole("img");
-    await user.click(screen.getByRole("button", { name: /Чтение чужой базы/ }));
+    await user.click(
+      screen.getByRole("button", {
+        name: /отсутствует в устаревшей декларации/,
+      }),
+    );
     const panel = within(screen.getByLabelText("Детали графа"));
-    expect(panel.getByText("db_query · SELECT")).toBeVisible();
-    expect(panel.getByText("0000000000000000000000000000000f")).toBeVisible();
+    expect(panel.getByText("http_call")).toBeVisible();
+    expect(
+      panel.getByText(analysis.violations[0].exampleTraceId),
+    ).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     ).toHaveAttribute("aria-pressed", "true");
     await user.click(panel.getByRole("button", { name: /К списку нарушений/ }));
     expect(
-      screen.getByRole("button", { name: /Чтение чужой базы/ }),
+      screen.getByRole("button", {
+        name: /отсутствует в устаревшей декларации/,
+      }),
     ).toBeVisible();
   });
   it("handles real Cytoscape tap events without recreating the graph", async () => {
@@ -130,10 +138,10 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     await screen.findByRole("img");
     const cy = cores.at(-1)!;
     act(() => {
-      cy.getElementById("postgres:shop-pg:orders_db").emit("tap");
+      cy.getElementById("postgres:astronomy-db:astronomy_db").emit("tap");
     });
     expect(
-      within(screen.getByLabelText("Детали графа")).getByText("db-orders_db"),
+      within(screen.getByLabelText("Детали графа")).getByText("astronomy-db"),
     ).toBeVisible();
     expect(cores.at(-1)).toBe(cy);
   });
@@ -144,14 +152,19 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     await user.click(
       screen.getByText("Список связей и узлов — выбор с клавиатуры"),
     );
-    const button = screen.getByRole("button", { name: "orders_db PostgreSQL" });
+    const button = screen.getByRole("button", {
+      name: "astronomy_db PostgreSQL",
+    });
     button.focus();
     await user.keyboard("{Enter}");
     expect(
-      within(screen.getByLabelText("Детали графа")).getByText("db-orders_db"),
+      within(screen.getByLabelText("Детали графа")).getByText("astronomy-db"),
     ).toBeVisible();
     expect(
-      cores.at(-1)!.getElementById("postgres:shop-pg:orders_db").selected(),
+      cores
+        .at(-1)!
+        .getElementById("postgres:astronomy-db:astronomy_db")
+        .selected(),
     ).toBe(true);
   });
   it("renders the actual snapshot interval rather than hardcoded demo timestamps", async () => {
@@ -251,7 +264,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
       screen.getByText("В этом интервале нет наблюдаемых связей."),
     ).toBeVisible();
     expect(cores.at(-1)!.edges()).toHaveLength(0);
-    expect(cores.at(-1)!.nodes()).toHaveLength(10);
+    expect(cores.at(-1)!.nodes()).toHaveLength(25);
   });
   it("ignores stale responses after a newer refresh has completed", async () => {
     const pending: Array<() => void> = [];

@@ -20,9 +20,13 @@ const style: StylesheetJson = [
       "text-valign": "center",
       "text-halign": "center",
       "text-wrap": "wrap",
-      "text-max-width": "200px",
+      "text-max-width": "260px",
       "text-overflow-wrap": "anywhere",
     },
+  },
+  {
+    selector: "node.overview",
+    style: { width: 160, height: 42, "text-max-width": "146px" },
   },
   {
     selector: ":parent",
@@ -145,12 +149,14 @@ export function createGraph(
   graph: DisplayGraph,
 ): Core {
   const positions = architecturePositions(graph);
-  return cytoscape({
+  const detailed = graph.nodes.some((n) => "parentId" in n.node);
+  const cy = cytoscape({
     container,
     headless: !container,
     styleEnabled: true,
     elements: graphElements(graph).map((element) => ({
       ...element,
+      classes: `${element.classes ?? ""} ${detailed ? "" : "overview"}`,
       ...(positions.has(element.data.id!)
         ? { position: positions.get(element.data.id!) }
         : {}),
@@ -160,6 +166,14 @@ export function createGraph(
     maxZoom: 3,
     layout: { name: "preset", fit: !!container, padding: 36 },
   });
+  if (container && detailed && graph.nodes.length > 40) {
+    const focus = cy.edges(".unexpected").connectedNodes();
+    if (focus.length) {
+      cy.fit(focus, 64);
+      if (cy.zoom() > 1) zoomAtCenter(cy, 1);
+    }
+  }
+  return cy;
 }
 
 export function zoomAtCenter(cy: Core, level: number) {
@@ -200,7 +214,10 @@ export function GraphCanvas({
     const cy = core.current;
     if (!cy) return;
     cy.$(":selected").unselect();
-    if (selected) cy.getElementById(selected).select();
+    if (selected) {
+      const element = cy.getElementById(selected).select();
+      if (element.length) cy.center(element);
+    }
   }, [graph, selected]);
   return (
     <div className="canvas-shell">
@@ -250,7 +267,7 @@ export function GraphCanvas({
         </button>
       </div>
       <span className="canvas-hint">
-        Перетаскивайте узлы · прокрутка для масштаба
+        Перетаскивайте фон · «Вписать» — весь граф
       </span>
     </div>
   );

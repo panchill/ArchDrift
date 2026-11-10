@@ -1,8 +1,8 @@
 import type { DisplayGraph } from "./graph";
 
-export const NODE_WIDTH = 220;
-export const NODE_HEIGHT = 42;
-export const CHILD_STEP = 58;
+export const NODE_WIDTH = 280;
+export const NODE_HEIGHT = 64;
+export const CHILD_STEP = 82;
 const COLUMN_STEP = 320;
 const GROUP_GAP = 70;
 
@@ -19,6 +19,51 @@ export function architecturePositions(
   const byId = new Map(nodes.map((n) => [n.node.id, n.node]));
   const services = nodes.filter((n) => n.node.type === "service");
   const serviceIds = new Set(services.map((n) => n.node.id));
+  // Demo has cycles and many endpoints: balance groups across four lanes.
+  // Keep the two ends of a violation together for the initial detailed viewport.
+  if (services.length > 12) {
+    const detailed = nodes.some((n) => "parentId" in n.node);
+    const priority = new Set(
+      graph.edges
+        .filter((e) => e.status === "unexpected")
+        .flatMap((e) => [e.source, e.target])
+        .map((id) => {
+          const node = byId.get(id)!;
+          return "parentId" in node ? node.parentId : id;
+        }),
+    );
+    const groups = [...services].sort(
+      (a, b) =>
+        Number(priority.has(b.node.id)) - Number(priority.has(a.node.id)) ||
+        a.node.id.localeCompare(b.node.id),
+    );
+    const positions = new Map<string, { x: number; y: number }>();
+    const heights = [70, 70, 70, 70];
+    for (const item of [
+      ...groups,
+      ...nodes.filter(
+        (n) => !serviceIds.has(n.node.id) && !("parentId" in n.node),
+      ),
+    ]) {
+      const lane = heights.indexOf(Math.min(...heights));
+      const x = 160 + lane * (detailed ? 350 : 220),
+        y = heights[lane];
+      const children = nodes.filter(
+        (n) => "parentId" in n.node && n.node.parentId === item.node.id,
+      );
+      children.forEach((child, i) =>
+        positions.set(child.node.id, { x, y: y + i * CHILD_STEP }),
+      );
+      positions.set(item.node.id, {
+        x,
+        y: y + (Math.max(0, children.length - 1) * CHILD_STEP) / 2,
+      });
+      heights[lane] += detailed
+        ? Math.max(NODE_HEIGHT, children.length * CHILD_STEP) + GROUP_GAP
+        : 80;
+    }
+    return positions;
+  }
   const owner = (id: string) => {
     const node = byId.get(id);
     return node && "parentId" in node ? node.parentId : id;
