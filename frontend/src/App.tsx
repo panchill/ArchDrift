@@ -22,25 +22,15 @@ const nodeLabels = {
 // Jaeger UI of the OpenTelemetry Demo behind its frontend-proxy.
 const JAEGER = "http://localhost:8080/jaeger/ui";
 const POLL_MS = 5000;
-const typeTags = {
-  http_call: "HTTP",
-  db_query: "PostgreSQL",
-  publish: "publish · Kafka",
-  consume: "consume · Kafka",
-};
 const number = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
-const clock = new Intl.DateTimeFormat("ru-RU", {
-  timeZone: "UTC",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
 function EdgeDetails({
   edge,
   names,
+  message,
 }: {
   edge: DisplayEdge;
   names: Map<string, string>;
+  message?: string;
 }) {
   return (
     <>
@@ -55,6 +45,7 @@ function EdgeDetails({
         {edge.type}
         {edge.dbOperation ? ` · ${edge.dbOperation}` : ""}
       </p>
+      {message && <p>{message}</p>}
       <dl className="metrics">
         <div>
           <dt>Операции</dt>
@@ -139,54 +130,35 @@ function NodeDetails({ item }: { item: GraphNode }) {
   );
 }
 
-function DriftCard({
+function DriftRow({
   edge,
-  message,
-  names,
   service,
   onShow,
 }: {
   edge: Edge;
-  message: string;
-  names: Map<string, string>;
   service: (id: string) => string;
   onShow: () => void;
 }) {
-  const detailed = service(edge.source) !== names.get(edge.source);
   return (
-    <article className={`drift-card ${edge.status}`}>
-      <strong className="mono">
-        {service(edge.source)} → {service(edge.target)}
-      </strong>
-      {detailed && (
-        <small className="mono drift-route">
-          {names.get(edge.source)} → {names.get(edge.target)}
-        </small>
-      )}
-      <span className="op-tag">
-        {edge.dbOperation
-          ? `${edge.dbOperation} · PostgreSQL`
-          : typeTags[edge.type]}
-      </span>
-      <p>{message}</p>
-      <small className="muted">
-        {number.format(edge.observedOperations)} операций · последняя{" "}
-        {clock.format(new Date(edge.lastSeenAt))}
-      </small>
-      <div className="drift-actions">
-        <button className="button primary" onClick={onShow}>
-          Показать на схеме
-        </button>
-        <a
-          className="button ghost"
-          href={`${JAEGER}/trace/${edge.exampleTraceId}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Трейс в Jaeger ↗
-        </a>
-      </div>
-    </article>
+    <li className="drift-row">
+      <button onClick={onShow}>
+        <span className={`status-dot ${edge.status}`} />
+        <span className="drift-path">
+          {service(edge.source)} → {service(edge.target)}
+          {edge.dbOperation && <span className="muted"> · {edge.dbOperation}</span>}
+        </span>
+        <span className="drift-count mono">
+          {number.format(edge.observedOperations)}
+        </span>
+      </button>
+      <a
+        href={`${JAEGER}/trace/${edge.exampleTraceId}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        трейс ↗
+      </a>
+    </li>
   );
 }
 
@@ -199,7 +171,11 @@ export default function App() {
   const [onlyDrift, setOnlyDrift] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>("dark");
-  const onSelect = useCallback((id: string | null) => setSelected(id), []);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const onSelect = useCallback((id: string | null) => {
+    setSelected(id);
+    if (id) setPanelOpen(true);
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     const load = () =>
@@ -262,7 +238,22 @@ export default function App() {
     setStatus("all");
     setOnlyDrift(false);
     setSelected(edgeKey(item));
+    setPanelOpen(true);
   };
+  const message =
+    edge &&
+    snapshot?.violations.find((v) =>
+      edge.members.some(
+        (m) =>
+          edgeKey(m) ===
+          edgeKey({
+            source: v.source,
+            target: v.target,
+            type: v.edgeType,
+            dbOperation: v.dbOperation,
+          }),
+      ),
+    )?.message;
   return (
     <div className="app">
       <header className="topbar">
@@ -303,7 +294,7 @@ export default function App() {
           Загрузка архитектуры…
         </div>
       ) : (
-        <div className="workspace">
+        <div className={`workspace ${panelOpen ? "" : "panel-closed"}`}>
           <section className="canvas-area">
             <GraphCanvas
               graph={graph}
@@ -362,10 +353,23 @@ export default function App() {
               </label>
             </div>
             <div className="float counters" aria-label="Сводка анализа">
-              <span className={violations ? "danger" : ""}>
+              <button
+                className={violations ? "danger" : ""}
+                onClick={() => setPanelOpen(true)}
+              >
                 <strong>{violations}</strong> нарушения
-              </span>
+              </button>
             </div>
+            <button
+              className="panel-toggle"
+              aria-expanded={panelOpen}
+              aria-controls="inspector"
+              aria-label={panelOpen ? "Скрыть панель" : "Показать панель"}
+              title={panelOpen ? "Скрыть панель" : "Показать панель"}
+              onClick={() => setPanelOpen((o) => !o)}
+            >
+              {panelOpen ? "›" : "‹"}
+            </button>
             <div className="float legend" aria-label="Легенда графа">
               {Object.entries(statusLabels).map(([key, label]) => (
                 <span key={key}>
@@ -379,60 +383,71 @@ export default function App() {
               </span>
             </div>
           </section>
-          <aside className="inspector" aria-label="Детали графа">
+          <aside
+            id="inspector"
+            className="inspector"
+            aria-label="Детали графа"
+            hidden={!panelOpen}
+          >
             <div className="inspector-body">
               {edge ? (
-                <EdgeDetails edge={edge} names={names} />
+                <EdgeDetails edge={edge} names={names} message={message} />
               ) : node ? (
                 <NodeDetails item={node} />
               ) : (
                 <>
                   <h2 className="section-title">
-                    Расхождения <span className="count bad">{violations}</span>
+                    Расхождения <span className="muted">{violations}</span>
                   </h2>
-                  {snapshot.violations.map((v, i) => {
-                    const item = {
-                      source: v.source,
-                      target: v.target,
-                      type: v.edgeType,
-                      dbOperation: v.dbOperation,
-                    };
-                    const match = edgesByKey.get(edgeKey(item));
-                    return match ? (
-                      <DriftCard
-                        key={i}
-                        edge={match}
-                        message={v.message}
-                        names={names}
-                        service={service}
-                        onShow={() => show(item)}
-                      />
-                    ) : null;
-                  })}
+                  {violations > 0 && (
+                    <p className="section-note">Этих вызовов нет в модели CALM</p>
+                  )}
+                  <ul className="drift-list">
+                    {snapshot.violations.map((v, i) => {
+                      const item = {
+                        source: v.source,
+                        target: v.target,
+                        type: v.edgeType,
+                        dbOperation: v.dbOperation,
+                      };
+                      const match = edgesByKey.get(edgeKey(item));
+                      return match ? (
+                        <DriftRow
+                          key={i}
+                          edge={match}
+                          service={service}
+                          onShow={() => show(item)}
+                        />
+                      ) : null;
+                    })}
+                  </ul>
                   {snapshot.edges.length === 0 && (
-                    <p className="notice">
+                    <p className="section-note">
                       В этом интервале нет наблюдаемых связей.
                     </p>
                   )}
                   {snapshot.edges.length > 0 && violations === 0 && (
-                    <p className="notice">Нарушений в наблюдаемых связях нет.</p>
+                    <p className="section-note">Нарушений в наблюдаемых связях нет.</p>
                   )}
                   {unclear.length > 0 && (
                     <>
                       <h2 className="section-title">
                         Недостаточно данных{" "}
-                        <span className="count warn">{unclear.length}</span>
+                        <span className="muted">{unclear.length}</span>
                       </h2>
-                      {unclear.map((e) => (
-                        <DriftCard
-                          key={edgeKey(e)}
-                          edge={e}
-                          message="Вызов виден только на уровне сервиса — нельзя проверить конкретный endpoint."
-                          names={names}
-                          service={service}
-                          onShow={() => show(e)}
-                        />
-                      ))}
+                      <p className="section-note">
+                        Виден только сервис, без endpoint — проверить нельзя
+                      </p>
+                      <ul className="drift-list">
+                        {unclear.map((e) => (
+                          <DriftRow
+                            key={edgeKey(e)}
+                            edge={e}
+                            service={service}
+                            onShow={() => show(e)}
+                          />
+                        ))}
+                      </ul>
                     </>
                   )}
                 </>
