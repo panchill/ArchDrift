@@ -100,6 +100,12 @@ export function buildGraph(
         )
         .map((n) => owner(n.node.id)),
     );
+    if (view === "details") {
+      for (const { node } of analysis.nodes) {
+        if ("parentId" in node && matches.has(node.parentId))
+          matches.add(node.id);
+      }
+    }
     edges = edges.filter((e) => matches.has(e.source) || matches.has(e.target));
     const visible = new Set([
       ...matches,
