@@ -25,12 +25,10 @@ const (
 	codeUnavailable       int32 = 14
 )
 
-// SpanStore сохраняет принятые спаны до ответа 200.
 type SpanStore interface {
 	InsertSpans(ctx context.Context, spans []model.Span) error
 }
 
-// Handle — POST /v1/traces. Protobuf без сжатия, тело до 4 МиБ.
 func Handle(w http.ResponseWriter, r *http.Request, db SpanStore) {
 	if enc := r.Header.Get("Content-Encoding"); enc != "" && !strings.EqualFold(enc, "identity") {
 		writeStatus(w, http.StatusUnsupportedMediaType, codeInvalidArgument, "поддерживается только Content-Encoding: identity")

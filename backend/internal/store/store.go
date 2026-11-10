@@ -1,4 +1,3 @@
-// Package store хранит спаны в PostgreSQL.
 package store
 
 import (
@@ -18,7 +17,6 @@ import (
 //go:embed migrations/001_spans.sql
 var migrations embed.FS
 
-// Store пишет пачки спанов. Повтор (trace_id, span_id) не затирает первую запись.
 type Store struct {
 	pool *pgxpool.Pool
 }
@@ -27,7 +25,6 @@ func New(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
 }
 
-// Migrate применяет SQL-миграции. Повторный вызов ничего не меняет.
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	_, err := pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -88,7 +85,6 @@ INSERT INTO spans (
 	$11::jsonb, $12::jsonb, $13::jsonb
 ) ON CONFLICT (trace_id, span_id) DO NOTHING`
 
-// InsertSpans сохраняет пачку в одной транзакции. Пустая пачка — успех.
 func (s *Store) InsertSpans(ctx context.Context, spans []model.Span) error {
 	if len(spans) == 0 {
 		return nil

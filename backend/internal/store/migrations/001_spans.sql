@@ -1,8 +1,3 @@
--- Спаны для построения графа и GET /api/v1/traces/{traceId}.
--- Дедупликация: первая запись (trace_id, span_id) побеждает.
--- Предки и парный SERVER ищутся по trace_id во всех сохранённых данных,
--- опорные спаны отбираются по start_time в интервале [from, to).
-
 CREATE TABLE IF NOT EXISTS spans (
     trace_id bytea NOT NULL,
     span_id bytea NOT NULL,

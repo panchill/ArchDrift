@@ -14,10 +14,6 @@ import (
 	"github.com/panchill/ArchDrift/backend/internal/model"
 )
 
-// Parse разбирает ExportTraceServiceRequest.
-// Неразбираемый protobuf — ошибка (HTTP 400).
-// Спаны с нулевым id, без service.name или с end < start отклоняются и не попадают в результат.
-// Повтор span id внутри пачки не отклоняется: остаётся первая запись.
 func Parse(body []byte) ([]model.Span, int, error) {
 	req := ptraceotlp.NewExportRequest()
 	if err := req.UnmarshalProto(body); err != nil {
