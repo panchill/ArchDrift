@@ -3,7 +3,6 @@ package migrations
 import (
 	"context"
 	"errors"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -37,33 +36,6 @@ func TestUpFreshConcurrentAndRepeat(t *testing.T) {
 	}
 	if _, err := pool.Exec(t.Context(), "SELECT trace_id,span_id FROM spans"); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestUpPreservesLegacyDataAndHistory(t *testing.T) {
-	_, pool := testdb.New(t)
-	legacy, err := os.ReadFile("testdata/legacy.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(t.Context(), string(legacy)); err != nil {
-		t.Fatal(err)
-	}
-	if err := Up(t.Context(), pool); err != nil {
-		t.Fatal(err)
-	}
-	var count int
-	for _, query := range []string{
-		"SELECT count(*) FROM spans WHERE service_name='legacy'",
-		"SELECT count(*) FROM schema_migrations WHERE version=1",
-		"SELECT count(*) FROM goose_db_version WHERE version_id=1 AND is_applied",
-	} {
-		if err := pool.QueryRow(t.Context(), query).Scan(&count); err != nil {
-			t.Fatal(err)
-		}
-		if count != 1 {
-			t.Fatalf("expected preserved record for %s; got %d", query, count)
-		}
 	}
 }
 

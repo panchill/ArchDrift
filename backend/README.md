@@ -41,9 +41,9 @@ go test -race ./...
 ```
 
 Set `TEST_DATABASE_URL` to a disposable PostgreSQL URL to also run migration and
-Fx integration tests. Tests use isolated temporary schemas, check the old schema
-upgrade, concurrent/repeated startup, advisory-lock cancellation, HTTP draining
-and startup failure cleanup. CI supplies PostgreSQL 18 and runs these tests.
+Fx integration tests. Tests use isolated temporary schemas and check fresh migrations,
+concurrent/repeated startup, advisory-lock cancellation, HTTP draining and startup
+failure cleanup. CI supplies PostgreSQL 18 and runs these tests.
 Without that variable integration tests explicitly skip.
 
 ## Railway
