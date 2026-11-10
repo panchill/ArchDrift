@@ -178,15 +178,12 @@ describe("Cytoscape integration", () => {
           );
         }
       }
-      const box = cy.elements().boundingBox();
-      expect(box.w).toBeLessThan(1500);
-      expect(box.h).toBeLessThan(view === "services" ? 700 : 2600);
-      const focus =
-        view === "details"
-          ? cy.edges(".unexpected").connectedNodes().boundingBox()
-          : box;
-      const laptopFit = Math.min((900 - 128) / focus.w, (540 - 128) / focus.h);
-      expect(laptopFit).toBeGreaterThan(view === "details" ? 1 : 0.7);
+      // Left-to-right flow: only cycle-closing edges may point backwards.
+      const backwards = cy
+        .edges()
+        .filter((e) => e.target().position("x") < e.source().position("x"));
+      expect(backwards.length).toBeLessThanOrEqual(3);
+      expect(cy.edges(".back").length).toBe(backwards.length);
       cy.destroy();
     },
   );

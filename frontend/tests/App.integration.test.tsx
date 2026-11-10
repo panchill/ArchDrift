@@ -106,9 +106,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     render(<App />);
     await screen.findByRole("img");
     await user.click(
-      screen.getByRole("button", {
-        name: /отсутствует в устаревшей декларации/,
-      }),
+      screen.getAllByRole("button", { name: "Показать на схеме" })[0],
     );
     const panel = within(screen.getByLabelText("Детали графа"));
     expect(panel.getByText("http_call")).toBeVisible();
@@ -119,11 +117,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
       screen.getByRole("button", { name: "Endpoints и воркеры" }),
     ).toHaveAttribute("aria-pressed", "true");
     await user.click(panel.getByRole("button", { name: /К списку нарушений/ }));
-    expect(
-      screen.getByRole("button", {
-        name: /отсутствует в устаревшей декларации/,
-      }),
-    ).toBeVisible();
+    expect(screen.getByText(analysis.violations[0].message)).toBeVisible();
   });
   it("handles real Cytoscape tap events without recreating the graph", async () => {
     render(<App />);
@@ -171,10 +165,10 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     );
     render(<App />);
     await screen.findByRole("img");
-    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent(
+    expect(screen.getByLabelText("Окно анализа")).toHaveTextContent(
       "08:10 — 08:20",
     );
-    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent(
+    expect(screen.getByLabelText("Окно анализа")).toHaveTextContent(
       "10 ноября 2026",
     );
   });
@@ -214,7 +208,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByRole("img");
-    await user.click(screen.getByRole("button", { name: /Обновить мок/ }));
+    await user.click(screen.getByRole("button", { name: /Обновить сейчас/ }));
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
     expect(await screen.findByRole("img")).toBeVisible();
   });
@@ -267,15 +261,15 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     );
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole("button", { name: /Обновить мок/ }));
+    await user.click(screen.getByRole("button", { name: /Обновить сейчас/ }));
     await screen.findByRole("img");
-    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent(
+    expect(screen.getByLabelText("Окно анализа")).toHaveTextContent(
       "09:00 — 09:05",
     );
     await act(async () => {
       pending.forEach((resolve) => resolve());
     });
-    expect(screen.getByLabelText("Сводка анализа")).toHaveTextContent(
+    expect(screen.getByLabelText("Окно анализа")).toHaveTextContent(
       "09:00 — 09:05",
     );
   });
