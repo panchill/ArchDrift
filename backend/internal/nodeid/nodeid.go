@@ -1,5 +1,3 @@
-// Package nodeid собирает канонические ID выходного графа.
-// Правила кодирования — NodeDefinition в instrumentation.yaml.
 package nodeid
 
 import (
@@ -7,8 +5,6 @@ import (
 	"strings"
 )
 
-// Encode — percent-encoding UTF-8. Без изменений остаются только
-// A-Z a-z 0-9 - . _ ~. Пробел кодируется как %20, hex в верхнем регистре.
 func Encode(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))

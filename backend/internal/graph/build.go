@@ -1,6 +1,3 @@
-// Package graph строит фактический граф из спанов.
-// Сопоставление с CALM здесь не делается — это сравнение в анализе.
-// Правила — раздел instrumentation в instrumentation.yaml.
 package graph
 
 import (
@@ -19,7 +16,6 @@ const (
 	edgeConsume = "consume"
 )
 
-// Node — наблюдаемый узел. known и статус ребра появляются при сравнении с моделью.
 type Node struct {
 	ID          string
 	Label       string
@@ -35,7 +31,6 @@ type Node struct {
 	Topic       string
 }
 
-// Edge — агрегат опорных спанов. Ключ: source, target, type, dbOperation.
 type Edge struct {
 	Source             string
 	Target             string
@@ -50,7 +45,6 @@ type Edge struct {
 	ExampleSpanID      string
 }
 
-// Diagnostics — ограничения наблюдения, не нарушения архитектуры.
 type Diagnostics struct {
 	UnmatchedHTTPClientSpans int
 	ServiceLevelOperations   int
@@ -58,7 +52,6 @@ type Diagnostics struct {
 	IgnoredMessagingSpans    int
 }
 
-// Graph — фактический граф за интервал [from, to).
 type Graph struct {
 	Nodes       []Node
 	Edges       []Edge
@@ -90,9 +83,6 @@ type acc struct {
 	sample model.Span
 }
 
-// Build строит граф. spans — все сохранённые спаны: опорные отбираются по start
-// в [from, to), предки и парный SERVER ищутся среди всех переданных.
-// Повтор (trace, span) не учитывается: побеждает первая запись.
 func Build(spans []model.Span, from, to time.Time) Graph {
 	index := make(map[string]model.Span, len(spans))
 	for _, sp := range spans {
@@ -448,8 +438,6 @@ func dbOperation(sp model.Span) string {
 	}
 }
 
-// httpView описывает HTTP-спан. gRPC без http.request.method — это POST и маршрут
-// /<package.Service>/<Method>. route пустой, если шаблон не восстановить.
 func httpView(sp model.Span) (method, route string, ok bool) {
 	if m, has := sp.StringAttr("http.request.method"); has {
 		route, _ = sp.StringAttr("http.route")
