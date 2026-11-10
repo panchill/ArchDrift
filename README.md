@@ -110,7 +110,7 @@ sequenceDiagram
 
 | Тип | Откуда → куда | Из каких спанов строится |
 | --- | --- | --- |
-| `http_call` | service / endpoint / worker → service / endpoint | HTTP CLIENT (+ парный SERVER) |
+| `http_call` | service / endpoint / worker → service / endpoint | HTTP или gRPC CLIENT (+ парный SERVER) |
 | `db_query` | service / endpoint / worker → postgres_database | DB CLIENT |
 | `publish` | service / endpoint / worker → kafka_topic | Kafka PRODUCER, операция `send` |
 | `consume` | kafka_topic → service / endpoint / worker | Kafka CONSUMER, операция `process` |
@@ -203,6 +203,7 @@ ArchDrift видит только то, что есть в трейсах. По�
 | --- | --- |
 | Любой сервис | `service.name` в ресурсе |
 | HTTP | CLIENT и SERVER с `http.request.method`; на SERVER по возможности `http.route` |
+| gRPC | CLIENT и SERVER с `rpc.system`/`rpc.system.name=grpc` и `rpc.method`; считается HTTP `POST /<pkg.Service>/<Method>` |
 | Воркер | Спан запуска задачи с `archdrift.worker.name` |
 | PostgreSQL | CLIENT с `db.system.name=postgresql`, `db.namespace=<база>`, `archdrift.postgres.instance=<инстанс>`; по возможности `db.operation.name` |
 | Kafka | `messaging.system=kafka`, `messaging.destination.name=<топик>`, `archdrift.kafka.cluster=<кластер>`, `messaging.operation.type` = `send` / `process` |
@@ -218,6 +219,7 @@ ArchDrift видит только то, что есть в трейсах. По�
 
 - [OpenAPI-спецификация](backend/api/api.yaml)
 - [Соглашения об инструментации](backend/api/instrumentation.yaml)
+- [Просмотр CALM-модели как сайта](docs/calm.md)
 
 | Метод | Путь | Назначение |
 | --- | --- | --- |

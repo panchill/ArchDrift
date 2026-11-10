@@ -15,6 +15,12 @@ import control from "./schemas/control.json";
 import flow from "./schemas/flow.json";
 
 const analysis = rawAnalysis as Analysis;
+const demoModel = JSON.parse(
+  readFileSync(
+    new URL("../../examples/opentelemetry-demo.architecture.json", import.meta.url),
+    "utf8",
+  ),
+);
 const api = parse(
   readFileSync(new URL("../../backend/api/api.yaml", import.meta.url), "utf8"),
 );
@@ -74,7 +80,8 @@ describe("fixtures conform to the backend contract", () => {
   it.each([
     ["Architecture", architecture],
     ["Analysis", analysis],
-  ])("%s matches OpenAPI response schemas", (name, data) => {
+    ["ArchitectureInput", demoModel],
+  ])("%s matches OpenAPI schemas", (name, data) => {
     const validate = ajv.compile({
       $ref: `#/components/schemas/${name}`,
       components: api.components,
@@ -91,6 +98,7 @@ describe("fixtures conform to the backend contract", () => {
     expect(validate(architecture.model), JSON.stringify(validate.errors)).toBe(
       true,
     );
+    expect(validate(demoModel), JSON.stringify(validate.errors)).toBe(true);
     const broken = structuredClone(architecture.model);
     (broken.nodes[0] as Record<string, unknown>).name = 42;
     expect(validate(broken)).toBe(false);

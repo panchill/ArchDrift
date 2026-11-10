@@ -4,11 +4,23 @@
 
 ## Контекст
 
-ArchDrift — проект хакатона. Он сравнивает фактическую архитектуру системы (из трейсов OpenTelemetry) с задекларированной моделью и показывает нарушения.
+ArchDrift — проект хакатона. Он сравнивает задекларированную архитектуру (модель FINOS CALM 1.2) с фактическим поведением системы, восстановленным из трейсов OpenTelemetry, и показывает расхождения.
 
 - **Это MVP, а не продукт.** Цель — работающее демо на защите 13.11. Всё, что не приближает к демо, не делаем.
+- **Наблюдаемая система — только [OpenTelemetry Demo](https://github.com/open-telemetry/opentelemetry-demo) (Astronomy Shop).** Собственных демо-микросервисов нет и не будет.
 - Описание логики — в [README.md](README.md).
-- **Источники истины:** [backend/api/api.yaml](backend/api/api.yaml) и [backend/api/instrumentation.yaml](backend/api/instrumentation.yaml). Код подстраивается под контракт, а не наоборот.
+- **Источники истины:** [backend/api/api.yaml](backend/api/api.yaml) и [backend/api/instrumentation.yaml](backend/api/instrumentation.yaml) (контракт 0.4.0). Код подстраивается под контракт, а не наоборот.
+
+## Структура репозитория
+
+| Путь | Что там |
+| --- | --- |
+| `backend/api/` | Контракты: OpenAPI и правила инструментации, профиль CALM (`calmProfile`) |
+| `backend/` | Go-бэкенд archdrift (один сервис) |
+| `frontend/` | UI: React + TypeScript + Vite + Cytoscape.js, моки в `frontend/public/mocks/` |
+| `examples/opentelemetry-demo.architecture.json` | CALM-модель Demo: эталон для демо и тестов |
+| `docs/calm.md` | Просмотр CALM-модели как сайта (`calm docify`) |
+| `/opentelemetry-demo` | Локальная копия Demo, в `.gitignore`. Не коммитить |
 
 ## Главное правило: минимум
 
@@ -16,13 +28,15 @@ ArchDrift — проект хакатона. Он сравнивает факт�
 
 - Пиши самое простое решение, которое удовлетворяет контракту.
 - Одно изменение — одна задача. Не правь соседний код «заодно».
-- Ориентир — **до ~300 строк** на одно изменение. Если выходит больше, остановись, опиши план и спроси человека.
+- Ориентир — **до ~300 строк** на одно изменение. Если выходит больше, остановись, опиши план и спроси человека. Сгенерированные данные (модели, моки, фикстуры спанов) в лимит не входят.
 - Не создавай абстракции «на будущее»: интерфейсы с одной реализацией, фабрики, плагины, generic-слои, конфигурируемые стратегии.
-- Не дублируй то, что уже умеют готовые инструменты: Jaeger показывает трейсы, Collector фильтрует и пересылает.
+- Не дублируй то, что уже умеют готовые инструменты: Jaeger показывает трейсы, Collector фильтрует, переименовывает и дополняет атрибуты.
 
 ## Не делать без явной просьбы человека
 
 - Менять `api.yaml` и `instrumentation.yaml`. Если контракт кажется неправильным, опиши проблему и предложи правку текстом.
+- Писать собственные демо-сервисы, генераторы трафика или «плохие» вызовы. Нагрузку даёт штатный load-generator Demo.
+- Менять исходный код сервисов Demo. Недостающие атрибуты добавляются только процессорами Collector (`otelcol-config-extras.yml`), остальное — переменными окружения и override-файлами docker-compose.
 - Добавлять зависимости (Go-модули, npm-пакеты). Если без зависимости не обойтись, объясни, зачем она нужна и почему нельзя без неё.
 - Аутентификация, роли, multi-tenancy, несколько окружений.
 - Kubernetes, Helm, Terraform, облачный деплой, сложный CI/CD.
@@ -40,30 +54,40 @@ ArchDrift — проект хакатона. Он сравнивает факт�
 | Часть | Технологии |
 | --- | --- |
 | Бэкенд archdrift | Go, стандартный `net/http`, `pgx` для PostgreSQL, `go.opentelemetry.io/collector/pdata` для разбора OTLP |
-| Хранилище | PostgreSQL, простые SQL-миграции |
+| Хранилище archdrift | Отдельный PostgreSQL, простые SQL-миграции. БД самого Demo не использовать |
 | UI | React + TypeScript + Vite + Cytoscape.js |
-| Демо-сервисы | Go, `otelhttp`, `otelpgx`, `franz-go` + `kotel` |
-| Инфраструктура | docker-compose, OTel Collector, Jaeger, Kafka (KRaft), PostgreSQL |
+| Наблюдаемая система | OpenTelemetry Demo: его Collector, Jaeger, Kafka, PostgreSQL, load-generator |
+| Инфраструктура | docker-compose: Demo + archdrift + PostgreSQL archdrift в одной сети. Collector Demo дополнительно экспортирует трейсы по OTLP HTTP в archdrift |
 
 Не меняй стек и не добавляй альтернативы (второй роутер, второй драйвер БД, UI-фреймворк поверх существующего).
+
+### Особенности стенда
+
+- Demo тяжёлый: 20+ контейнеров, нужно ≥ 6 ГБ RAM для Docker.
+- Порт `8080` на хосте занимает frontend-proxy Demo (магазин, Jaeger `/jaeger/ui`, Grafana). Архитектура archdrift в `api.yaml` описана на `localhost:8080`, поэтому на хосте archdrift публикуется на другом порту; внутри сети compose он остаётся на 8080.
+- Атрибуты `archdrift.*` и имена semconv в Demo могут не совпадать с `instrumentation.yaml`. Сначала посмотри реальные спаны (Jaeger или debug-экспортер Collector), потом пиши процессор. Не угадывай.
 
 ## Приоритеты реализации
 
 Работай строго сверху вниз. Следующий уровень — только когда предыдущий работает в демо.
 
 **P0 — без этого нет демо**
-1. `POST /v1/traces`: принять protobuf, сохранить спаны, ответить 200.
-2. `PUT` и `GET /api/v1/architecture`: валидация CALM 1.2, ссылок и привязок к телеметрии.
-3. `GET /api/v1/analysis`: построение рёбер по `instrumentation.yaml`, статусы `declared` / `unexpected` / `indeterminate`, нарушения `unexpected_edge`.
-4. `GET /healthz`.
-5. UI: граф по `/api/v1/analysis`, цвета (зелёный — `declared`, красный — `unexpected`, серый — `indeterminate`), список нарушений, опрос раз в 3–5 секунд.
-6. Демо-сервисы с инструментацией по `instrumentation.yaml`, генератор нагрузки, переключатель «плохого» вызова `payments → orders_db`.
+1. Стенд: `make up` поднимает Demo и archdrift, Collector Demo шлёт трейсы в `POST /v1/traces`.
+2. Процессоры Collector: спаны Demo несут атрибуты, нужные `instrumentation.yaml` (`service.name`, `http.route`, `rpc.*`, `db.*`, `messaging.*`, `archdrift.*`).
+3. `POST /v1/traces`: принять protobuf, сохранить спаны, ответить 200.
+4. `PUT` и `GET /api/v1/architecture`: валидация CALM 1.2, ссылок и привязок к телеметрии.
+5. `GET /api/v1/analysis`: построение рёбер по `instrumentation.yaml` (HTTP и gRPC → `http_call`, PostgreSQL, Kafka), статусы `declared` / `unexpected` / `indeterminate`, нарушения `unexpected_edge`.
+6. `GET /healthz`.
+7. Сценарий «устаревшая модель»: `make model` загружает полную модель, `make model-stale` — копию без связи `checkout → email`. Устаревшую копию генерировать из `examples/opentelemetry-demo.architecture.json`, а не вести второй файл руками.
+8. UI на живом API: граф по `/api/v1/analysis`, цвета (зелёный — `declared`, красный — `unexpected`, серый — `indeterminate`), список нарушений, опрос раз в 3–5 секунд.
+
+Демо на защите: `make model-stale` → через несколько секунд связь `checkout → email` красная, в списке нарушений `unexpected_edge` с примером трейса → `make model` → связь зелёная.
 
 **P1 — после того как P0 работает целиком**
 - `GET /readyz`, полный подсчёт `diagnostics`.
 - Дедупликация спанов и `partial_success` по контракту.
 - Ответы 413 / 415 / 503 на `/v1/traces`.
-- `GET /api/v1/traces/{traceId}`. Пока его нет, UI даёт ссылку на трейс в Jaeger по `exampleTraceId`.
+- `GET /api/v1/traces/{traceId}`. Пока его нет, UI даёт ссылку на трейс в Jaeger Demo по `exampleTraceId`.
 
 **P2 — только по просьбе человека**
 - Всё остальное.
@@ -73,23 +97,26 @@ ArchDrift — проект хакатона. Он сравнивает факт�
 - Отдельной политики разрешений нет. Любая совпавшая CALM-связь даёт `declared`.
 - Без полного совпадения: возможное совпадение после уточнения fallback даёт `indeterminate`, иначе `unexpected`.
 - Связь на сервис охватывает его непосредственные endpoints и воркеры. Связь на endpoint или воркер совпадает только с ним самим и **не** совпадает с service-level fallback.
+- gRPC: CLIENT/SERVER-спан с `rpc.system=grpc` обрабатывается как HTTP с методом `POST` и маршрутом `/<package>.<Service>/<Method>`, тип ребра `http_call` (раздел `instrumentation.grpc`). В модели Demo такие endpoints уже описаны как интерфейсы `POST /oteldemo.X/Y`.
 - `publish` и `consume` строятся независимо: у producer и consumer может не быть общего трейса.
-- Опорные спаны для метрик: HTTP CLIENT, DB CLIENT, Kafka PRODUCER `send`, Kafka CONSUMER `process`. SERVER-спан повторно вызов не считает.
+- Опорные спаны для метрик: HTTP/gRPC CLIENT, DB CLIENT, Kafka PRODUCER `send`, Kafka CONSUMER `process`. SERVER-спан повторно вызов не считает.
 - Ненаблюдаемые узлы и связи не являются нарушениями.
-- Endpoints и воркеры могут не быть объявлены отдельно: связь сервисов покрывает их. `known=false` не является нарушением. Служебные маршруты (`/health`, `/healthz`, `/readyz`) в демо-сервисах не трейсить.
+- Endpoints и воркеры могут не быть объявлены отдельно: связь сервисов покрывает их. `known=false` не является нарушением.
+- Сервисы, не вошедшие в модель Demo (Valkey, OpenSearch, Collector, Jaeger, Grafana и т. п., см. `description` модели), не должны превращаться в шум. Отфильтровать их — задача Collector, а не анализатора.
 - CALM ID произвольны; привязки обязательны по `calmProfile` в instrumentation.yaml. Канонические ID выходного графа — percent-encoding UTF-8 по правилам `instrumentation.yaml`. Сделай одну функцию кодирования и используй её везде.
 
 ## Тесты
 
 - Обязательно: табличные unit-тесты на сопоставление деклараций и на построение рёбер из спанов. Это ядро проекта.
-- Желательно: один сквозной тест анализа на фикстуре спанов демо-магазина.
+- Желательно: один сквозной тест анализа на фикстуре — дампе реальных спанов Demo и модели из `examples/`.
+- Фронтенд: `npm test` в `frontend/` проходит; моки в `frontend/public/mocks/` соответствуют `api.yaml`.
 - Не нужно: тесты на HTTP-обвязку ради покрытия, моки всего подряд, e2e в браузере.
 
 ## Перед тем как считать задачу готовой
 
 1. `gofmt` и `go vet ./...` без замечаний.
-2. `go test ./...` проходит.
-3. `make up` поднимает стенд, демо-сценарий из README работает.
+2. `go test ./...` и `npm test` (если трогал фронтенд) проходят.
+3. `make up` поднимает стенд, демо-сценарий из раздела «Приоритеты» работает.
 4. Изменение не выходит за рамки задачи и не трогает контракты.
 5. В описании PR: что сделано, как проверить, какие допущения сделаны. В конце — `Closes #<номер задачи>`.
 
