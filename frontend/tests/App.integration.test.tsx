@@ -122,28 +122,7 @@ describe("mock → HTTP client → React → Cytoscape", () => {
     ).toBeVisible();
     expect(cores.at(-1)).toBe(cy);
   });
-  it("supports keyboard-accessible graph selection", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await screen.findByRole("img");
-    await user.click(
-      screen.getByText("Список связей и узлов — выбор с клавиатуры"),
-    );
-    const button = screen.getByRole("button", {
-      name: "astronomy_db PostgreSQL",
-    });
-    button.focus();
-    await user.keyboard("{Enter}");
-    expect(
-      within(screen.getByLabelText("Детали графа")).getByText("astronomy-db"),
-    ).toBeVisible();
-    expect(
-      cores
-        .at(-1)!
-        .getElementById("postgres:astronomy-db:astronomy_db")
-        .selected(),
-    ).toBe(true);
-  });
+
   it("recovers from a failed request through retry", async () => {
     vi.stubGlobal(
       "fetch",

@@ -465,40 +465,6 @@ code {
   color: var(--text-2);
   line-height: 1.45;
 }
-.diagnostics,
-.accessible-list {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card);
-  padding: 12px 14px;
-  color: var(--text-2);
-}
-.diagnostics p {
-  margin-top: 8px;
-  line-height: 1.45;
-}
-.accessible-list h3 {
-  margin: 12px 0 6px;
-  font-size: 13px;
-  color: var(--text);
-}
-.accessible-list button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  width: 100%;
-  padding: 6px 4px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: none;
-  text-align: left;
-  font-size: 13px;
-}
-.accessible-list small {
-  margin-left: auto;
-  color: var(--text-3);
-}
 
 /* Selected node / edge details */
 .inspector h3 {

@@ -263,11 +263,6 @@ export default function App() {
     setOnlyDrift(false);
     setSelected(edgeKey(item));
   };
-  const hasIncompleteTelemetry =
-    snapshot &&
-    (snapshot.diagnostics.unmatchedHttpClientSpans > 0 ||
-      snapshot.diagnostics.unresolvedResourceSpans > 0 ||
-      snapshot.diagnostics.serviceLevelOperations > 0);
   return (
     <div className="app">
       <header className="topbar">
@@ -393,7 +388,7 @@ export default function App() {
               ) : (
                 <>
                   <h2 className="section-title">
-                    Вне декларации <span className="count bad">{violations}</span>
+                    Расхождения <span className="count bad">{violations}</span>
                   </h2>
                   {snapshot.violations.map((v, i) => {
                     const item = {
@@ -440,20 +435,6 @@ export default function App() {
                       ))}
                     </>
                   )}
-                  {hasIncompleteTelemetry && (
-                    <details className="diagnostics">
-                      <summary>Телеметрия неполная</summary>
-                      <p>
-                        HTTP-вызовы без определённого назначения:{" "}
-                        {snapshot.diagnostics.unmatchedHttpClientSpans}.
-                        Ресурсы без идентичности:{" "}
-                        {snapshot.diagnostics.unresolvedResourceSpans}.
-                        Операции без детализации:{" "}
-                        {snapshot.diagnostics.serviceLevelOperations}.
-                        Отсутствие нарушения не доказывает соответствие.
-                      </p>
-                    </details>
-                  )}
                 </>
               )}
               {(edge || node) && (
@@ -461,25 +442,6 @@ export default function App() {
                   ← К списку нарушений
                 </button>
               )}
-              <details className="accessible-list">
-                <summary>Список связей и узлов — выбор с клавиатуры</summary>
-                <h3>Связи</h3>
-                {graph.edges.map((e) => (
-                  <button key={e.id} onClick={() => setSelected(e.id)}>
-                    <span className={`status-dot ${e.status}`} />
-                    {names.get(e.source)} → {names.get(e.target)} ·{" "}
-                    {e.dbOperation ?? e.type}
-                    <small>{statusLabels[e.status]}</small>
-                  </button>
-                ))}
-                <h3>Узлы</h3>
-                {graph.nodes.map((n) => (
-                  <button key={n.node.id} onClick={() => setSelected(n.node.id)}>
-                    {n.node.label}
-                    <small>{nodeLabels[n.node.type]}</small>
-                  </button>
-                ))}
-              </details>
             </div>
           </aside>
         </div>
