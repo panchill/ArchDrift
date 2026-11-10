@@ -2,7 +2,7 @@
 openapi: 3.0.3
 info:
   title: ArchDrift MVP API
-  version: 0.3.0
+  version: 0.3.1
   description: 'MVP: HTTP, workers, PostgreSQL, Kafka. REST — JSON; ingestion — OTLP
     protobuf. Подробности: instrumentation.yaml.'
 servers:

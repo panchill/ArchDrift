@@ -1,4 +1,16 @@
-/opentelemetry-demo
-/frontend/mock
+# Окружение и IDE
 /.idea
 /.claude
+.DS_Store
+
+# Локальная копия OpenTelemetry Demo и сгенерированная CALM-документация
+/opentelemetry-demo
+/examples/output
+
+# Frontend
+/frontend/mock
+node_modules/
+dist/
+coverage/
+.sites-runtime/
+*.tsbuildinfo

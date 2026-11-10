@@ -1,0 +1,572 @@
+{
+  "architectureVersion": 1,
+  "from": "2026-11-09T20:00:00Z",
+  "to": "2026-11-09T20:05:00Z",
+  "generatedAt": "2026-11-09T20:05:01Z",
+  "nodes": [
+    {
+      "node": {
+        "id": "endpoint:gateway:GET:%2Forders%2F%7Bid%7D",
+        "label": "GET /orders/{id}",
+        "type": "endpoint",
+        "parentId": "service:gateway",
+        "method": "GET",
+        "route": "/orders/{id}"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-gateway",
+      "calmInterfaceId": "lookup"
+    },
+    {
+      "node": {
+        "id": "endpoint:gateway:POST:%2Fcheckout",
+        "label": "POST /checkout",
+        "type": "endpoint",
+        "parentId": "service:gateway",
+        "method": "POST",
+        "route": "/checkout"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-gateway",
+      "calmInterfaceId": "checkout"
+    },
+    {
+      "node": {
+        "id": "endpoint:inventory:POST:%2Freservations",
+        "label": "POST /reservations",
+        "type": "endpoint",
+        "parentId": "service:inventory",
+        "method": "POST",
+        "route": "/reservations"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-inventory",
+      "calmInterfaceId": "reserve"
+    },
+    {
+      "node": {
+        "id": "endpoint:orders:GET:%2Forders%2F%7Bid%7D",
+        "label": "GET /orders/{id}",
+        "type": "endpoint",
+        "parentId": "service:orders",
+        "method": "GET",
+        "route": "/orders/{id}"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-orders",
+      "calmInterfaceId": "lookup"
+    },
+    {
+      "node": {
+        "id": "endpoint:orders:POST:%2Forders",
+        "label": "POST /orders",
+        "type": "endpoint",
+        "parentId": "service:orders",
+        "method": "POST",
+        "route": "/orders"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-orders",
+      "calmInterfaceId": "create"
+    },
+    {
+      "node": {
+        "id": "endpoint:orders:POST:%2Forders%2F%7Bid%7D%2Fcancel",
+        "label": "POST /orders/{id}/cancel",
+        "type": "endpoint",
+        "parentId": "service:orders",
+        "method": "POST",
+        "route": "/orders/{id}/cancel"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "svc-orders",
+      "calmInterfaceId": "cancel"
+    },
+    {
+      "node": {
+        "id": "endpoint:payments:GET:%2Fpayments%2F%7Bid%7D",
+        "label": "GET /payments/{id}",
+        "type": "endpoint",
+        "parentId": "service:payments",
+        "method": "GET",
+        "route": "/payments/{id}"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-payments",
+      "calmInterfaceId": "lookup"
+    },
+    {
+      "node": {
+        "id": "endpoint:payments:POST:%2Fpayments",
+        "label": "POST /payments",
+        "type": "endpoint",
+        "parentId": "service:payments",
+        "method": "POST",
+        "route": "/payments"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-payments",
+      "calmInterfaceId": "charge"
+    },
+    {
+      "node": {
+        "id": "kafka:shop-events:orders.created",
+        "label": "orders.created",
+        "type": "kafka_topic",
+        "cluster": "shop-events",
+        "topic": "orders.created"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "topic-orders.created"
+    },
+    {
+      "node": {
+        "id": "kafka:shop-events:orders.debug",
+        "label": "orders.debug",
+        "type": "kafka_topic",
+        "cluster": "shop-events",
+        "topic": "orders.debug"
+      },
+      "known": false,
+      "observed": true
+    },
+    {
+      "node": {
+        "id": "kafka:shop-events:payments.completed",
+        "label": "payments.completed",
+        "type": "kafka_topic",
+        "cluster": "shop-events",
+        "topic": "payments.completed"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "topic-payments.completed"
+    },
+    {
+      "node": {
+        "id": "postgres:shop-pg:inventory_db",
+        "label": "inventory_db",
+        "type": "postgres_database",
+        "instance": "shop-pg",
+        "database": "inventory_db"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "db-inventory_db"
+    },
+    {
+      "node": {
+        "id": "postgres:shop-pg:orders_db",
+        "label": "orders_db",
+        "type": "postgres_database",
+        "instance": "shop-pg",
+        "database": "orders_db"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "db-orders_db"
+    },
+    {
+      "node": {
+        "id": "postgres:shop-pg:payments_db",
+        "label": "payments_db",
+        "type": "postgres_database",
+        "instance": "shop-pg",
+        "database": "payments_db"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "db-payments_db"
+    },
+    {
+      "node": {
+        "id": "service:gateway",
+        "label": "gateway",
+        "type": "service",
+        "serviceName": "gateway"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-gateway"
+    },
+    {
+      "node": {
+        "id": "service:inventory",
+        "label": "inventory",
+        "type": "service",
+        "serviceName": "inventory"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-inventory"
+    },
+    {
+      "node": {
+        "id": "service:notifications",
+        "label": "notifications",
+        "type": "service",
+        "serviceName": "notifications"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-notifications"
+    },
+    {
+      "node": {
+        "id": "service:orders",
+        "label": "orders",
+        "type": "service",
+        "serviceName": "orders"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-orders"
+    },
+    {
+      "node": {
+        "id": "service:payments",
+        "label": "payments",
+        "type": "service",
+        "serviceName": "payments"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "svc-payments"
+    },
+    {
+      "node": {
+        "id": "worker:inventory:release-reservation",
+        "label": "release-reservation",
+        "type": "worker",
+        "parentId": "service:inventory",
+        "workerName": "release-reservation"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "worker-release-reservation"
+    },
+    {
+      "node": {
+        "id": "worker:notifications:send-email",
+        "label": "send-email",
+        "type": "worker",
+        "parentId": "service:notifications",
+        "workerName": "send-email"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "worker-send-email"
+    }
+  ],
+  "edges": [
+    {
+      "source": "endpoint:gateway:GET:%2Forders%2F%7Bid%7D",
+      "target": "endpoint:orders:GET:%2Forders%2F%7Bid%7D",
+      "type": "http_call",
+      "observedOperations": 94,
+      "errorOperations": 0,
+      "avgDurationMs": 12,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-2"
+      ],
+      "exampleTraceId": "00000000000000000000000000000002",
+      "exampleSpanId": "0000000000000002"
+    },
+    {
+      "source": "endpoint:gateway:POST:%2Fcheckout",
+      "target": "endpoint:orders:POST:%2Forders",
+      "type": "http_call",
+      "observedOperations": 128,
+      "errorOperations": 0,
+      "avgDurationMs": 38,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-1"
+      ],
+      "exampleTraceId": "00000000000000000000000000000001",
+      "exampleSpanId": "0000000000000001"
+    },
+    {
+      "source": "endpoint:inventory:POST:%2Freservations",
+      "target": "postgres:shop-pg:inventory_db",
+      "type": "db_query",
+      "observedOperations": 128,
+      "errorOperations": 0,
+      "avgDurationMs": 5,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-8"
+      ],
+      "exampleTraceId": "00000000000000000000000000000009",
+      "exampleSpanId": "0000000000000009",
+      "dbOperation": "UPDATE"
+    },
+    {
+      "source": "endpoint:orders:GET:%2Forders%2F%7Bid%7D",
+      "target": "postgres:shop-pg:orders_db",
+      "type": "db_query",
+      "observedOperations": 94,
+      "errorOperations": 0,
+      "avgDurationMs": 3,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-6"
+      ],
+      "exampleTraceId": "00000000000000000000000000000007",
+      "exampleSpanId": "0000000000000007",
+      "dbOperation": "SELECT"
+    },
+    {
+      "source": "endpoint:orders:POST:%2Forders",
+      "target": "endpoint:inventory:POST:%2Freservations",
+      "type": "http_call",
+      "observedOperations": 128,
+      "errorOperations": 0,
+      "avgDurationMs": 19,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-4"
+      ],
+      "exampleTraceId": "00000000000000000000000000000004",
+      "exampleSpanId": "0000000000000004"
+    },
+    {
+      "source": "endpoint:orders:POST:%2Forders",
+      "target": "endpoint:payments:POST:%2Fpayments",
+      "type": "http_call",
+      "observedOperations": 121,
+      "errorOperations": 2,
+      "avgDurationMs": 84,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-3"
+      ],
+      "exampleTraceId": "00000000000000000000000000000003",
+      "exampleSpanId": "0000000000000003"
+    },
+    {
+      "source": "endpoint:orders:POST:%2Forders",
+      "target": "kafka:shop-events:orders.created",
+      "type": "publish",
+      "observedOperations": 128,
+      "errorOperations": 0,
+      "avgDurationMs": 2,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-9"
+      ],
+      "exampleTraceId": "0000000000000000000000000000000a",
+      "exampleSpanId": "000000000000000a"
+    },
+    {
+      "source": "endpoint:orders:POST:%2Forders",
+      "target": "kafka:shop-events:orders.debug",
+      "type": "publish",
+      "observedOperations": 7,
+      "errorOperations": 0,
+      "avgDurationMs": 1,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "unexpected",
+      "matchedRelationshipIds": [],
+      "exampleTraceId": "00000000000000000000000000000010",
+      "exampleSpanId": "0000000000000010"
+    },
+    {
+      "source": "endpoint:orders:POST:%2Forders",
+      "target": "postgres:shop-pg:orders_db",
+      "type": "db_query",
+      "observedOperations": 128,
+      "errorOperations": 0,
+      "avgDurationMs": 4,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-5"
+      ],
+      "exampleTraceId": "00000000000000000000000000000005",
+      "exampleSpanId": "0000000000000005",
+      "dbOperation": "INSERT"
+    },
+    {
+      "source": "endpoint:orders:POST:%2Forders",
+      "target": "postgres:shop-pg:orders_db",
+      "type": "db_query",
+      "observedOperations": 128,
+      "errorOperations": 0,
+      "avgDurationMs": 2,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-5"
+      ],
+      "exampleTraceId": "00000000000000000000000000000006",
+      "exampleSpanId": "0000000000000006",
+      "dbOperation": "SELECT"
+    },
+    {
+      "source": "endpoint:orders:POST:%2Forders",
+      "target": "service:payments",
+      "type": "http_call",
+      "observedOperations": 7,
+      "errorOperations": 0,
+      "avgDurationMs": 51,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "indeterminate",
+      "matchedRelationshipIds": [],
+      "exampleTraceId": "00000000000000000000000000000011",
+      "exampleSpanId": "0000000000000011"
+    },
+    {
+      "source": "endpoint:payments:POST:%2Fpayments",
+      "target": "kafka:shop-events:payments.completed",
+      "type": "publish",
+      "observedOperations": 119,
+      "errorOperations": 0,
+      "avgDurationMs": 2,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-11"
+      ],
+      "exampleTraceId": "0000000000000000000000000000000c",
+      "exampleSpanId": "000000000000000c"
+    },
+    {
+      "source": "endpoint:payments:POST:%2Fpayments",
+      "target": "postgres:shop-pg:orders_db",
+      "type": "db_query",
+      "observedOperations": 17,
+      "errorOperations": 0,
+      "avgDurationMs": 8,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "unexpected",
+      "matchedRelationshipIds": [],
+      "exampleTraceId": "0000000000000000000000000000000f",
+      "exampleSpanId": "000000000000000f",
+      "dbOperation": "SELECT"
+    },
+    {
+      "source": "endpoint:payments:POST:%2Fpayments",
+      "target": "postgres:shop-pg:payments_db",
+      "type": "db_query",
+      "observedOperations": 121,
+      "errorOperations": 0,
+      "avgDurationMs": 6,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-7"
+      ],
+      "exampleTraceId": "00000000000000000000000000000008",
+      "exampleSpanId": "0000000000000008",
+      "dbOperation": "INSERT"
+    },
+    {
+      "source": "kafka:shop-events:orders.created",
+      "target": "worker:notifications:send-email",
+      "type": "consume",
+      "observedOperations": 126,
+      "errorOperations": 0,
+      "avgDurationMs": 42,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-10"
+      ],
+      "exampleTraceId": "0000000000000000000000000000000b",
+      "exampleSpanId": "000000000000000b"
+    },
+    {
+      "source": "kafka:shop-events:payments.completed",
+      "target": "worker:inventory:release-reservation",
+      "type": "consume",
+      "observedOperations": 119,
+      "errorOperations": 0,
+      "avgDurationMs": 9,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-12"
+      ],
+      "exampleTraceId": "0000000000000000000000000000000d",
+      "exampleSpanId": "000000000000000d"
+    },
+    {
+      "source": "worker:inventory:release-reservation",
+      "target": "postgres:shop-pg:inventory_db",
+      "type": "db_query",
+      "observedOperations": 119,
+      "errorOperations": 0,
+      "avgDurationMs": 4,
+      "firstSeenAt": "2026-11-09T20:00:10Z",
+      "lastSeenAt": "2026-11-09T20:04:50Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "rel-13"
+      ],
+      "exampleTraceId": "0000000000000000000000000000000e",
+      "exampleSpanId": "000000000000000e",
+      "dbOperation": "UPDATE"
+    }
+  ],
+  "violations": [
+    {
+      "source": "endpoint:orders:POST:%2Forders",
+      "target": "kafka:shop-events:orders.debug",
+      "exampleTraceId": "00000000000000000000000000000010",
+      "exampleSpanId": "0000000000000010",
+      "type": "unexpected_edge",
+      "edgeType": "publish",
+      "message": "Публикация в незадекларированный Kafka-топик."
+    },
+    {
+      "source": "endpoint:payments:POST:%2Fpayments",
+      "target": "postgres:shop-pg:orders_db",
+      "exampleTraceId": "0000000000000000000000000000000f",
+      "exampleSpanId": "000000000000000f",
+      "type": "unexpected_edge",
+      "edgeType": "db_query",
+      "message": "Чтение чужой базы не описано в CALM.",
+      "dbOperation": "SELECT"
+    }
+  ],
+  "diagnostics": {
+    "unmatchedHttpClientSpans": 1,
+    "serviceLevelOperations": 7,
+    "unresolvedResourceSpans": 1,
+    "ignoredMessagingSpans": 0
+  }
+}

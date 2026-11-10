@@ -41,7 +41,7 @@ ArchDrift — проект хакатона. Он сравнивает факт�
 | --- | --- |
 | Бэкенд archdrift | Go, стандартный `net/http`, `pgx` для PostgreSQL, `go.opentelemetry.io/collector/pdata` для разбора OTLP |
 | Хранилище | PostgreSQL, простые SQL-миграции |
-| UI | Vite + Cytoscape.js |
+| UI | React + TypeScript + Vite + Cytoscape.js |
 | Демо-сервисы | Go, `otelhttp`, `otelpgx`, `franz-go` + `kotel` |
 | Инфраструктура | docker-compose, OTel Collector, Jaeger, Kafka (KRaft), PostgreSQL |
 
@@ -97,4 +97,4 @@ ArchDrift — проект хакатона. Он сравнивает факт�
 
 - Контракт неоднозначен → не придумывай, задай вопрос и приведи варианты.
 - Задача требует чего-то из списка «Не делать» → остановись и спроси.
-- Нашёл баг вне своей задачи → опиши его, не чини молча. 
+- Нашёл баг вне своей задачи → опиши его, не чини молча.

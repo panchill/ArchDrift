@@ -48,6 +48,7 @@ contractDetails:
     Поддерживаются HTTP endpoints, фоновые воркеры, PostgreSQL-базы и Kafka-топики.
     REST — JSON; ingestion — бинарный OTLP protobuf. Регистрация Collector не требуется.
     Версия 0.3.0: вход — CALM 1.2; отдельная политика разрешений удалена.
+    Версия 0.3.1: gRPC CLIENT/SERVER учитываются как http_call (раздел instrumentation.grpc).
     Граф всегда детальный. Сворачивание endpoints/workers до сервисов выполняет frontend.
     Принадлежность parentId не является ребром взаимодействия и не является наблюдаемым вызовом.
     Контракт инструментации MVP приведён в разделе instrumentation; это соглашение проекта,
