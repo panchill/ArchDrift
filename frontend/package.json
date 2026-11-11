@@ -11,7 +11,7 @@
     "mocks:check": "node scripts/generate-architecture-mock.mjs --check",
     "predev": "npm run mocks:generate",
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit -p tsconfig.build.json && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:frontend": "vitest run --exclude tests/contracts.test.ts",
