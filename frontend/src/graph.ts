@@ -1,5 +1,6 @@
 import type { ElementDefinition } from "cytoscape";
 import type { Analysis, Edge, EdgeStatus, GraphNode } from "./types";
+import { plural, windowMinutes, WORDS } from "./text";
 
 export type GraphView = "services" | "details";
 export interface DisplayEdge extends Edge {
@@ -12,9 +13,9 @@ export interface DisplayGraph {
   edges: DisplayEdge[];
 }
 export const statusLabels: Record<EdgeStatus, string> = {
-  declared: "По декларации",
-  unexpected: "Вне декларации",
-  indeterminate: "Недостаточно данных",
+  declared: "Есть в модели",
+  unexpected: "Нет в модели",
+  indeterminate: "Не хватает данных",
 };
 const edgeLabels = {
   http_call: "HTTP",
@@ -39,8 +40,7 @@ export function nodeMeta(analysis: Analysis): Map<string, NodeMeta> {
     const node = byId.get(id);
     return node && "parentId" in node ? node.parentId : id;
   };
-  const minutes =
-    Math.max(1, Date.parse(analysis.to) - Date.parse(analysis.from)) / 60000;
+  const minutes = windowMinutes(analysis);
   const meta = new Map<string, NodeMeta>();
   const get = (id: string) => {
     if (!meta.has(id))
@@ -65,8 +65,8 @@ export function nodeMeta(analysis: Analysis): Map<string, NodeMeta> {
       const workers = kids.length - endpoints;
       item.caption =
         [
-          endpoints ? `${endpoints} endpoint${endpoints > 1 ? "s" : ""}` : "",
-          workers ? `${workers} воркер` : "",
+          endpoints ? plural(endpoints, WORDS.endpoints) : "",
+          workers ? plural(workers, WORDS.workers) : "",
         ]
           .filter(Boolean)
           .join(" · ") || "сервис";
@@ -106,6 +106,15 @@ export const edgeKey = (
     edge.type,
     edge.dbOperation ?? null,
   ]);
+
+export const ownerId = (id: string, nodes: Map<string, GraphNode>) => {
+  const node = nodes.get(id)?.node;
+  return node && "parentId" in node ? node.parentId : id;
+};
+export const serviceEdgeId = (edge: Edge, nodes: Map<string, GraphNode>) =>
+  edgeKey({ ...edge, source: ownerId(edge.source, nodes), target: ownerId(edge.target, nodes) });
+export const serviceName = (id: string, nodes: Map<string, GraphNode>) =>
+  nodes.get(ownerId(id, nodes))?.node.label ?? "Неизвестный узел";
 
 export function buildGraph(
   analysis: Analysis,

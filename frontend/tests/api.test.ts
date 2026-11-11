@@ -1,30 +1,32 @@
-import { describe, expect, it, vi } from "vitest";
-import { loadSnapshot } from "../src/api";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError, loadAnalysis, loadArchitecture } from "../src/api";
+import architecture from "../public/mocks/architecture.json";
 import analysis from "../public/mocks/analysis.json";
-
-describe("mock HTTP client", () => {
-  it("loads the analysis response using an abort signal", async () => {
-    const fetcher = vi.fn(async () => new Response(JSON.stringify(analysis)));
-    vi.stubGlobal("fetch", fetcher);
-    const signal = new AbortController().signal;
-    expect(await loadSnapshot(signal)).toEqual(analysis);
-    expect(fetcher).toHaveBeenCalledOnce();
-    expect(fetcher).toHaveBeenCalledWith("/mocks/analysis.json", { signal });
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+const signal = () => new AbortController().signal;
+beforeEach(() => vi.stubGlobal("fetch", vi.fn()));
+describe("UI fixture adapter", () => {
+  it("loads fixture URLs with abort signals and never requests a backend", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(json(architecture)).mockResolvedValueOnce(json(analysis));
+    const abort = signal();
+    expect(await loadArchitecture(abort)).toEqual(architecture);
+    expect(await loadAnalysis(abort)).toEqual(analysis);
+    expect(vi.mocked(fetch).mock.calls).toEqual([
+      ["/mocks/architecture.json", { signal: abort }],
+      ["/mocks/analysis.json", { signal: abort }],
+    ]);
   });
-  it("reports non-200 responses rather than rendering invalid data", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("not found", { status: 404 })),
-    );
-    await expect(loadSnapshot(new AbortController().signal)).rejects.toThrow(
-      "HTTP 404",
-    );
+  it("supports the empty-model screen when the fixture is absent", async () => {
+    vi.mocked(fetch).mockResolvedValue(json({}, 404));
+    expect(await loadArchitecture(signal())).toBeNull();
   });
-  it("surfaces malformed JSON", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("{broken")),
-    );
-    await expect(loadSnapshot(new AbortController().signal)).rejects.toThrow();
+  it("surfaces fixture load failures", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response("unavailable", { status: 503 }));
+    await expect(loadAnalysis(signal())).rejects.toBeInstanceOf(ApiError);
+  });
+  it("does not load an aborted request", async () => {
+    const controller = new AbortController(); controller.abort();
+    await expect(loadArchitecture(controller.signal)).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

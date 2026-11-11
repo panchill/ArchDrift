@@ -1,0 +1,20 @@
+import { afterEach, expect, it, vi } from "vitest";
+import architecture from "../public/mocks/architecture.json";
+import analysis from "../public/mocks/analysis.json";
+import type { CalmModel } from "../src/types";
+afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
+it("uses fixtures and keeps mock uploads in memory", async () => {
+  vi.resetModules();
+  const api = await import("../src/api");
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => new Response(JSON.stringify(url.includes("analysis") ? analysis : architecture))));
+  const signal = new AbortController().signal;
+  expect(await api.loadArchitecture(signal)).toEqual(architecture);
+  expect(await api.loadAnalysis(signal)).toEqual(analysis);
+  expect(vi.mocked(fetch).mock.calls.map(c => c[0])).toEqual(["/mocks/architecture.json", "/mocks/analysis.json"]);
+  const uploaded = await api.uploadArchitecture(architecture.model as CalmModel, 1);
+  expect(uploaded.version).toBe(2);
+  expect(uploaded.model.metadata?.archdrift?.version).toBe(2);
+  expect(await api.loadArchitecture(signal)).toEqual(uploaded);
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect((await api.loadAnalysis(signal))?.architectureVersion).toBe(2);
+});
