@@ -1,0 +1,16 @@
+# Подключается только в `make up-remote`: Collector Demo читает третий конфиг
+# deploy/otelcol-config-remote.yml и дополнительно шлёт трейсы на ARCHDRIFT_REMOTE_URL.
+services:
+  otel-collector:
+    # Команда целиком, как её собирают compose-файлы Demo 3.1.0, плюс наш конфиг в конце.
+    command:
+      - --config=/etc/otelcol-config.yml
+      - --config=/etc/otelcol-config-full.yml
+      - --config=/etc/otelcol-config-observability.yml
+      - --config=/etc/otelcol-config-extras.yml
+      - --config=/etc/otelcol-config-remote.yml
+      - --feature-gates=service.profilesSupport
+    volumes:
+      - ${ARCHDRIFT_ROOT}/deploy/otelcol-config-remote.yml:/etc/otelcol-config-remote.yml
+    environment:
+      - ARCHDRIFT_REMOTE_URL=${ARCHDRIFT_REMOTE_URL:?задайте ARCHDRIFT_REMOTE_URL}

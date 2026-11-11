@@ -7,6 +7,7 @@ STALE_EDGE := checkout--post-oteldemo-CheckoutService-PlaceOrder--to--email--pos
 
 COMPOSE = cd $(DEMO_DIR) && \
 	ARCHDRIFT_ROOT=$(ROOT) \
+	ARCHDRIFT_REMOTE_URL=$(ARCHDRIFT_REMOTE_URL) \
 	OTEL_COLLECTOR_CONFIG_EXTRAS=$(ROOT)/deploy/otelcol-config-extras.yml \
 	docker compose \
 	-f compose.yaml \
@@ -14,10 +15,11 @@ COMPOSE = cd $(DEMO_DIR) && \
 	-f compose.observability.yaml \
 	-f compose.extras.yaml \
 	-f $(ROOT)/compose.yaml \
+	$(EXTRA_COMPOSE) \
 	--env-file .env \
 	--env-file .env.override
 
-.PHONY: up down reset logs model model-stale
+.PHONY: up up-remote down reset logs model model-stale
 
 up: $(DEMO_DIR)/.git
 	touch $(DEMO_DIR)/.env.override
@@ -28,6 +30,14 @@ up: $(DEMO_DIR)/.git
 	@echo "ArchDrift API: http://localhost:8081"
 	@echo "ArchDrift UI:  http://localhost:5173"
 	@echo "Docker: не меньше 6 ГБ памяти."
+
+# Как up, но Collector дополнительно шлёт трейсы в удалённый ArchDrift:
+# make up-remote ARCHDRIFT_REMOTE_URL=https://<адрес бэкенда>
+up-remote:
+	@test -n "$(ARCHDRIFT_REMOTE_URL)" || { echo "задайте ARCHDRIFT_REMOTE_URL=https://<адрес бэкенда>"; exit 1; }
+	$(MAKE) up EXTRA_COMPOSE="-f $(ROOT)/deploy/compose.remote.yaml" ARCHDRIFT_REMOTE_URL=$(ARCHDRIFT_REMOTE_URL)
+	@echo "Трейсы также уходят в: $(ARCHDRIFT_REMOTE_URL)/v1/traces"
+	@echo "Модель туда: make model ARCHDRIFT_URL=$(ARCHDRIFT_REMOTE_URL)"
 
 down:
 	@test -d $(DEMO_DIR) || { echo "стенд не развёрнут"; exit 0; }

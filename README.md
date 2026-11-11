@@ -255,6 +255,17 @@ Collector Demo дополнительно шлёт трейсы OTLP/HTTP protob
 
 Остальные команды: `make down` — остановить, `make reset` — остановить и стереть данные, `make logs` — логи. `make model` загружает полную CALM-модель, `make model-stale` — ту же модель без связи checkout → email. Адрес API задаёт `ARCHDRIFT_URL`, по умолчанию `http://localhost:8081`.
 
+### Трейсы в удалённый ArchDrift (Railway)
+
+Чтобы облачный ArchDrift тоже получал трейсы с локального Demo:
+
+```bash
+make up-remote ARCHDRIFT_REMOTE_URL=https://<адрес бэкенда>
+make model ARCHDRIFT_URL=https://<адрес бэкенда>
+```
+
+Collector шлёт копию трейсов на `<адрес>/v1/traces`, локальный archdrift продолжает их получать. Подключаются `deploy/compose.remote.yaml` и третий конфиг Collector `deploy/otelcol-config-remote.yml`; адрес в репозитории не хранится. Трейсы идут, пока Demo работает на этой машине. Вернуться к обычному режиму — `make up`.
+
 Атрибуты `archdrift.*` в спаны Demo добавляют процессоры Collector. Пока их нет, трейсы уже доходят до archdrift, но часть рёбер PostgreSQL и Kafka может не собраться.
 
 ## Демо-сценарий
