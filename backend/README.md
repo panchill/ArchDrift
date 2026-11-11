@@ -14,8 +14,25 @@ Fx applies migrations before opening the HTTP listener. On SIGTERM/SIGINT it
 stops accepting requests, drains active requests, then closes the database pool.
 Startup has a 30-second budget; shutdown uses Fx's 15-second budget.
 
-Implemented routes: `GET /healthz` (also HEAD), `POST /v1/traces`, and
-`PUT` / `GET /api/v1/architecture`. OTLP is protobuf-only with a 4 MiB limit.
+Implemented routes: `GET /healthz` (also HEAD), `POST /v1/traces`,
+`PUT` / `GET /api/v1/architecture`, and `GET /api/v1/analysis`.
+OTLP is protobuf-only with a 4 MiB limit.
+
+## Analysis
+
+`GET /api/v1/analysis?from=2026-11-10T00:00:00Z&to=2026-11-11T00:00:00Z`
+compares observations in `[from,to)` against the current CALM model. Both timestamps
+must include a timezone; the interval must be positive and at most 24 hours.
+Invalid intervals return 400, an absent model returns 409, and unavailable storage
+returns 503. Intervals without observations return model nodes with `observed: false`
+and empty edges/violations arrays.
+
+The model and spans are read in one read-only, repeatable-read transaction. Related
+spans outside the interval remain available for ownership and HTTP pairing; only
+in-window anchors contribute operations. Comparison is recalculated on each request:
+service declarations cover their immediate endpoints/workers, exact declarations
+match only themselves, and compatible service fallbacks are `indeterminate`.
+Only `unexpected` edges create violations. No migrations or new dependencies are needed.
 
 ## Architecture
 
@@ -82,8 +99,9 @@ Without that variable integration tests explicitly skip.
   no HTTP, PostgreSQL or Fx imports.
 - `internal/model`, `internal/graph`, `internal/nodeid`: spans and their acceptance rules,
   graph construction and canonical identifiers; no transport or database dependencies.
-- `internal/usecase`: architecture read/replace and trace ingestion, including batch deduplication;
-  repository interfaces are defined here and consume domain types.
+- `internal/analysis`: pure comparison of resolved CALM declarations and observed graphs.
+- `internal/usecase`: architecture read/replace, trace ingestion with batch deduplication,
+  and analysis orchestration; repository interfaces are defined here and consume domain types.
 - `internal/ingest`: named HTTP handlers, request limits, OTLP decoding/encoding and mapping errors
   to API responses. The decoder applies domain acceptance rules before allocating rejected records; the use case
   validates its inputs and deduplicates accepted spans before persistence.
