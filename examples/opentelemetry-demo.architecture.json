@@ -258,7 +258,7 @@
           "metadata": {
             "archdrift": {
               "method": "GET",
-              "route": "/api/products"
+              "route": "/api/products/index"
             }
           }
         },
@@ -267,7 +267,7 @@
           "metadata": {
             "archdrift": {
               "method": "GET",
-              "route": "/api/products/[productId]"
+              "route": "/api/products/[productId]/index"
             }
           }
         },
@@ -576,6 +576,33 @@
         }
       },
       "interfaces": [
+        {
+          "unique-id": "flagd--post-flagd-evaluation-v2-Service-ResolveBoolean",
+          "metadata": {
+            "archdrift": {
+              "method": "POST",
+              "route": "/flagd.evaluation.v2.Service/ResolveBoolean"
+            }
+          }
+        },
+        {
+          "unique-id": "flagd--post-flagd-evaluation-v2-Service-ResolveFloat",
+          "metadata": {
+            "archdrift": {
+              "method": "POST",
+              "route": "/flagd.evaluation.v2.Service/ResolveFloat"
+            }
+          }
+        },
+        {
+          "unique-id": "flagd--post-flagd-evaluation-v2-Service-ResolveInt",
+          "metadata": {
+            "archdrift": {
+              "method": "POST",
+              "route": "/flagd.evaluation.v2.Service/ResolveInt"
+            }
+          }
+        },
         {
           "unique-id": "flagd--post-flagd-evaluation-v1-Service-ResolveBoolean",
           "metadata": {
