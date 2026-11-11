@@ -230,6 +230,7 @@ progress::-webkit-progress-value { background: var(--ok); border-radius: 5px; }
 .table small { display: block; color: var(--text-3); font-size: 12px; line-height: 1.5; margin-top: 5px; }
 .table tr.hl { background: color-mix(in srgb, var(--bad) 6%, transparent); }
 .issues-table td:first-child { min-width: 150px; font-size: 12px; }
+.issues-table td:first-child, .issues-table td:nth-child(3) { white-space: nowrap; overflow-wrap: normal; }
 .issues-table .button { padding: 4px 8px; font-size: 12px; }
 .nowrap { white-space: nowrap; }
 .empty-state { color: var(--text-2); padding: 32px 0; }

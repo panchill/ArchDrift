@@ -1,9 +1,12 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
+const proxy = { "/api": { target: process.env.ARCHDRIFT_API_URL ?? "http://localhost:8081", changeOrigin: true } };
+
 export default defineConfig({
   plugins: [react()],
-  preview: { allowedHosts: true },
+  server: { proxy },
+  preview: { allowedHosts: true, proxy },
   build: {
     rollupOptions: {
       output: {

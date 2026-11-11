@@ -3,13 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Core, CytoscapeOptions } from "cytoscape";
 import App from "../src/App";
-import * as api from "../src/api";
 import analysis from "../public/mocks/analysis.json";
 import architecture from "../public/mocks/architecture.json";
 import { serviceEdgeId } from "../src/graph";
 import type { Analysis } from "../src/types";
 const { cores } = vi.hoisted(() => ({ cores: [] as Core[] }));
-// Keep graph elements, events, ELK and React; model upload responses are simulated.
+// Keep real graph elements, events, ELK, API adapter and React; replace only rendering.
 vi.mock("cytoscape", async importOriginal => {
   const module = await importOriginal<{ default: typeof import("cytoscape") }>();
   return { default: (options: CytoscapeOptions) => {
@@ -24,11 +23,14 @@ const file = (source = JSON.stringify(architecture.model)) => {
   Object.defineProperty(value, "text", { value: async () => source }); return value;
 };
 let poll: () => Promise<void>;
+let resizeGraph: () => void;
 beforeEach(() => {
   cores.length = 0;
-  vi.spyOn(api, "uploadArchitecture").mockResolvedValue(architecture as import("../src/types").Architecture);
   history.replaceState(null, "", "/");
-  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  vi.stubGlobal("ResizeObserver", class {
+    constructor(callback: () => void) { resizeGraph = callback; }
+    observe() {} disconnect() {}
+  });
   vi.stubGlobal("fetch", vi.fn(async (url: unknown) => response(url)));
   const timeout = globalThis.setTimeout;
   vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => Promise<void>, ms: number, ...args: unknown[]) => {
@@ -59,13 +61,14 @@ describe("new architecture flow", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Это не JSON");
     expect(vi.mocked(fetch).mock.calls.every(([, init]) => init?.method !== "PUT")).toBe(true);
   });
-  it("passes version zero and translates a simulated server validation error", async () => {
+  it("sends version zero and translates a server validation error", async () => {
     const user = userEvent.setup(); await noModel();
-    vi.mocked(api.uploadArchitecture).mockRejectedValue(new api.ApiError(400, { code: "validation_error", message: "Invalid model", details: [{ field: "/relationships/0/relationship-type/connects/destination", message: "unknown node reference" }] }));
+    vi.mocked(fetch).mockResolvedValue(json({ code: "validation_error", details: [{ field: "/relationships/0/relationship-type/connects/destination", message: "unknown node reference" }] }, 400));
     await user.upload(screen.getByLabelText("Файл CALM"), file());
     expect(await screen.findByRole("alert")).toHaveTextContent("Сервер не принял модель — 1 ошибка");
     expect(screen.getByRole("alert")).toHaveTextContent("Указанного узла нет в модели");
-    expect(api.uploadArchitecture).toHaveBeenCalledWith(architecture.model, 0);
+    const put = vi.mocked(fetch).mock.calls.find(([, init]) => init?.method === "PUT")!;
+    expect(JSON.parse(String(put[1]?.body)).metadata.archdrift.version).toBe(0);
   });
   it("uploads, opens graph, retains the file name but dismisses upload success on leaving", async () => {
     const user = userEvent.setup(); await noModel();
@@ -108,6 +111,35 @@ describe("new architecture flow", () => {
     expect(await navigator.clipboard.readText()).toContain('"connects"');
     await user.click(panel.getByRole("button", { name: "Закрыть панель" }));
     expect(screen.queryByLabelText("Детали графа")).toBeNull();
+  });
+  it("keeps both ends of a selected edge visible after the inspector shrinks the canvas", async () => {
+    render(<App />); await screen.findByRole("img");
+    const cy = cores.at(-1)!;
+    const edge = (analysis as Analysis).edges.find(e => e.status === "unexpected")!;
+    const nodes = new Map((analysis as Analysis).nodes.map(n => [n.node.id, n]));
+    const element = cy.getElementById(serviceEdgeId(edge, nodes));
+    const box = element.union(element.connectedNodes()).boundingBox();
+    const extent = vi.spyOn(cy, "extent").mockReturnValue({ x1: box.x1 - 100, y1: box.y1 - 100, x2: box.x2 + 100, y2: box.y2 + 100, w: box.w + 200, h: box.h + 200 });
+    const animate = vi.spyOn(cy, "animate").mockReturnValue(cy);
+    act(() => { element.emit("tap"); });
+    expect(screen.getByLabelText("Детали графа")).toBeVisible();
+    act(() => resizeGraph());
+    expect(animate).not.toHaveBeenCalled(); // A visible selection must not move the camera.
+    const resize = vi.spyOn(cy, "resize").mockImplementation(() => {
+      extent.mockReturnValue({ x1: box.x1 - 100, y1: box.y1 - 100, x2: box.x2 - 1, y2: box.y2 + 100, w: box.w + 99, h: box.h + 200 });
+      return cy;
+    });
+    act(() => resizeGraph());
+    expect(resize).toHaveBeenCalled();
+    const fit = animate.mock.calls[0][0].fit!;
+    expect(fit.padding).toBe(64);
+    const fitted = fit.eles as ReturnType<Core["collection"]>;
+    expect(fitted.contains(element)).toBe(true);
+    expect(fitted.contains(element.connectedNodes())).toBe(true);
+    act(() => cy.emit("tap"));
+    animate.mockClear();
+    act(() => resizeGraph());
+    expect(animate).not.toHaveBeenCalled();
   });
   it("opens service direction tabs, expands by button, and closes on Esc or background", async () => {
     const user = userEvent.setup(); render(<App />); await screen.findByRole("img");
@@ -152,6 +184,8 @@ describe("new architecture flow", () => {
   it("lists original problem edges and selects their collapsed edge on the graph", async () => {
     const user = userEvent.setup(); render(<App />); await screen.findByRole("img");
     await user.click(screen.getByRole("tab", { name: /Нарушения/ }));
+    expect(screen.getByRole("button", { name: /Нет в модели/ }).querySelector(".status-dot.unexpected")).not.toBeNull();
+    expect(screen.getByRole("button", { name: /Не хватает данных/ }).querySelector(".status-dot.indeterminate")).not.toBeNull();
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows).toHaveLength(analysis.edges.filter(e => e.status !== "declared").length);
     expect(rows[0]).toHaveTextContent("Нет в модели");

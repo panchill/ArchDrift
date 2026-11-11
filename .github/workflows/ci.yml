@@ -43,6 +43,9 @@ jobs:
       - name: Run frontend unit and integration tests
         run: npm run test:frontend
 
+      - name: Check TypeScript in tests
+        run: npm run typecheck
+
       - name: Check TypeScript and build
         run: npm run build
 
