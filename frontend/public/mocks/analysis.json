@@ -327,6 +327,48 @@
     },
     {
       "node": {
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v2.Service%2FResolveBoolean",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v2.Service/ResolveBoolean",
+        "method": "POST",
+        "route": "/flagd.evaluation.v2.Service/ResolveBoolean"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v2-Service-ResolveBoolean"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v2.Service%2FResolveFloat",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v2.Service/ResolveFloat",
+        "method": "POST",
+        "route": "/flagd.evaluation.v2.Service/ResolveFloat"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v2-Service-ResolveFloat"
+    },
+    {
+      "node": {
+        "id": "endpoint:flagd:POST:%2Fflagd.evaluation.v2.Service%2FResolveInt",
+        "type": "endpoint",
+        "parentId": "service:flagd",
+        "label": "POST /flagd.evaluation.v2.Service/ResolveInt",
+        "method": "POST",
+        "route": "/flagd.evaluation.v2.Service/ResolveInt"
+      },
+      "known": true,
+      "observed": false,
+      "calmNodeId": "flagd",
+      "calmInterfaceId": "flagd--post-flagd-evaluation-v2-Service-ResolveInt"
+    },
+    {
+      "node": {
         "id": "endpoint:flagd:POST:%2Fofrep%2Fv1%2Fevaluate%2Fflags",
         "type": "endpoint",
         "parentId": "service:flagd",
@@ -605,31 +647,31 @@
     },
     {
       "node": {
-        "id": "endpoint:frontend:GET:%2Fapi%2Fproducts",
+        "id": "endpoint:frontend:GET:%2Fapi%2Fproducts%2F%5BproductId%5D%2Findex",
         "type": "endpoint",
         "parentId": "service:frontend",
-        "label": "GET /api/products",
+        "label": "GET /api/products/[productId]/index",
         "method": "GET",
-        "route": "/api/products"
-      },
-      "known": true,
-      "observed": true,
-      "calmNodeId": "frontend",
-      "calmInterfaceId": "frontend--get-api-products"
-    },
-    {
-      "node": {
-        "id": "endpoint:frontend:GET:%2Fapi%2Fproducts%2F%5BproductId%5D",
-        "type": "endpoint",
-        "parentId": "service:frontend",
-        "label": "GET /api/products/[productId]",
-        "method": "GET",
-        "route": "/api/products/[productId]"
+        "route": "/api/products/[productId]/index"
       },
       "known": true,
       "observed": true,
       "calmNodeId": "frontend",
       "calmInterfaceId": "frontend--get-api-products-productId"
+    },
+    {
+      "node": {
+        "id": "endpoint:frontend:GET:%2Fapi%2Fproducts%2Findex",
+        "type": "endpoint",
+        "parentId": "service:frontend",
+        "label": "GET /api/products/index",
+        "method": "GET",
+        "route": "/api/products/index"
+      },
+      "known": true,
+      "observed": true,
+      "calmNodeId": "frontend",
+      "calmInterfaceId": "frontend--get-api-products"
     },
     {
       "node": {
@@ -1447,39 +1489,7 @@
       "exampleSpanId": "0000000000000016"
     },
     {
-      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts",
-      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
-      "type": "http_call",
-      "observedOperations": 152,
-      "errorOperations": 0,
-      "avgDurationMs": 45.8,
-      "firstSeenAt": "2026-11-10T10:00:02Z",
-      "lastSeenAt": "2026-11-10T10:04:58Z",
-      "status": "declared",
-      "matchedRelationshipIds": [
-        "frontend--get-api-products--to--currency--post-oteldemo-CurrencyService-Convert"
-      ],
-      "exampleTraceId": "00000000000000000000000000000018",
-      "exampleSpanId": "0000000000000018"
-    },
-    {
-      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts",
-      "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FListProducts",
-      "type": "http_call",
-      "observedOperations": 149,
-      "errorOperations": 3,
-      "avgDurationMs": 44.1,
-      "firstSeenAt": "2026-11-10T10:00:02Z",
-      "lastSeenAt": "2026-11-10T10:04:58Z",
-      "status": "declared",
-      "matchedRelationshipIds": [
-        "frontend--get-api-products--to--product-catalog--post-oteldemo-ProductCatalogService-ListProducts"
-      ],
-      "exampleTraceId": "00000000000000000000000000000017",
-      "exampleSpanId": "0000000000000017"
-    },
-    {
-      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts%2F%5BproductId%5D",
+      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts%2F%5BproductId%5D%2Findex",
       "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
       "type": "http_call",
       "observedOperations": 158,
@@ -1495,7 +1505,7 @@
       "exampleSpanId": "000000000000001a"
     },
     {
-      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts%2F%5BproductId%5D",
+      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts%2F%5BproductId%5D%2Findex",
       "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FGetProduct",
       "type": "http_call",
       "observedOperations": 155,
@@ -1509,6 +1519,38 @@
       ],
       "exampleTraceId": "00000000000000000000000000000019",
       "exampleSpanId": "0000000000000019"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts%2Findex",
+      "target": "endpoint:currency:POST:%2Foteldemo.CurrencyService%2FConvert",
+      "type": "http_call",
+      "observedOperations": 152,
+      "errorOperations": 0,
+      "avgDurationMs": 45.8,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-products--to--currency--post-oteldemo-CurrencyService-Convert"
+      ],
+      "exampleTraceId": "00000000000000000000000000000018",
+      "exampleSpanId": "0000000000000018"
+    },
+    {
+      "source": "endpoint:frontend:GET:%2Fapi%2Fproducts%2Findex",
+      "target": "endpoint:product-catalog:POST:%2Foteldemo.ProductCatalogService%2FListProducts",
+      "type": "http_call",
+      "observedOperations": 149,
+      "errorOperations": 3,
+      "avgDurationMs": 44.1,
+      "firstSeenAt": "2026-11-10T10:00:02Z",
+      "lastSeenAt": "2026-11-10T10:04:58Z",
+      "status": "declared",
+      "matchedRelationshipIds": [
+        "frontend--get-api-products--to--product-catalog--post-oteldemo-ProductCatalogService-ListProducts"
+      ],
+      "exampleTraceId": "00000000000000000000000000000017",
+      "exampleSpanId": "0000000000000017"
     },
     {
       "source": "endpoint:frontend:GET:%2Fapi%2Frecommendations",
