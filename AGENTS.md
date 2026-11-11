@@ -79,9 +79,9 @@ ArchDrift — проект хакатона. Он сравнивает заде�
 5. `GET /api/v1/analysis`: построение рёбер по `instrumentation.yaml` (HTTP и gRPC → `http_call`, PostgreSQL, Kafka), статусы `declared` / `unexpected` / `indeterminate`, нарушения `unexpected_edge`.
 6. `GET /healthz`.
 7. Сценарий «устаревшая модель»: `make model` загружает полную модель, `make model-stale` — копию без связи `checkout → email`. Устаревшую копию генерировать из `examples/opentelemetry-demo.architecture.json`, а не вести второй файл руками.
-8. UI на живом API: граф по `/api/v1/analysis`, цвета (зелёный — `declared`, красный — `unexpected`, серый — `indeterminate`), список нарушений, опрос раз в 3–5 секунд.
+8. UI на живом API: граф по `/api/v1/analysis`, цвета (серый — `declared`, красный — `unexpected`, жёлтый пунктир — `indeterminate`), список нарушений, опрос раз в 3–5 секунд.
 
-Демо на защите: `make model-stale` → через несколько секунд связь `checkout → email` красная, в списке нарушений `unexpected_edge` с примером трейса → `make model` → связь зелёная.
+Демо на защите: `make model-stale` → через несколько секунд связь `checkout → email` красная, в списке нарушений `unexpected_edge` с примером трейса → `make model` → связь серая (`declared`, «Есть в модели»).
 
 **P1 — после того как P0 работает целиком**
 - `GET /readyz`, полный подсчёт `diagnostics`.

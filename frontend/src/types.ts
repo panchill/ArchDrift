@@ -59,3 +59,30 @@ export interface Analysis {
     ignoredMessagingSpans: number;
   };
 }
+
+export interface CalmNode {
+  "unique-id": string;
+  "node-type": string;
+  name: string;
+  interfaces?: { "unique-id": string; [key: string]: unknown }[];
+  [key: string]: unknown;
+}
+export interface CalmRelationship {
+  "unique-id": string;
+  "relationship-type": {
+    connects?: {
+      source: { node: string; interfaces?: string[] };
+      destination: { node: string; interfaces?: string[] };
+    };
+    [key: string]: unknown;
+  };
+  metadata?: { archdrift?: { type?: EdgeType }; [key: string]: unknown };
+  [key: string]: unknown;
+}
+export interface CalmModel {
+  nodes: CalmNode[];
+  relationships: CalmRelationship[];
+  metadata?: { archdrift?: { version?: number; [key: string]: unknown }; [key: string]: unknown };
+  [key: string]: unknown;
+}
+export interface Architecture { version: number; updatedAt: string; model: CalmModel }

@@ -21,6 +21,7 @@ import {
   type Route,
 } from "./layout";
 import type { NodeType } from "./types";
+import { plural, WORDS } from "./text";
 
 export type Theme = "dark" | "light";
 export const palettes = {
@@ -102,7 +103,7 @@ export function nodeSvg(
       (bad
         ? `<circle cx="22" cy="66" r="7" fill="${p.bad}"/>` +
           text(22, 70, "!", 11, "#fff", `font-weight="700" text-anchor="middle"`) +
-          text(36, 70, `${bad} ${bad === 1 ? "нарушение" : "нарушения"}`, 12.5, p.bad, `font-weight="500"`)
+          text(36, 70, plural(bad, WORDS.violations), 12.5, p.bad, `font-weight="500"`)
         : meta?.opsPerMinute
           ? `<circle cx="22" cy="66" r="6.5" fill="none" stroke="${p.ok}" stroke-width="1.5"/>` +
             `<path d="M19 66 l2.2 2.2 l4 -4.4" fill="none" stroke="${p.ok}" stroke-width="1.5"/>` +
@@ -465,6 +466,7 @@ export function GraphCanvas({
   graph,
   selected,
   onSelect,
+  onToggleExpand,
   meta,
   theme = "dark",
   direction,
@@ -474,6 +476,7 @@ export function GraphCanvas({
   view: GraphView;
   selected: string | null;
   onSelect: (id: string | null) => void;
+  onToggleExpand?: (id: string) => void;
   meta?: Map<string, NodeMeta>;
   theme?: Theme;
   direction?: Direction;
@@ -510,7 +513,7 @@ export function GraphCanvas({
       ...[...(meta ?? [])].filter(([, m]) => m.hub).map(([id]) => id),
     ].join("|");
     // Hint = where nodes are now, so ELK keeps columns and order instead of reshuffling.
-    const hint = last.current?.view === view ? last.current.positions : undefined;
+    const hint = last.current?.positions;
     if (!layouts.current.has(key))
       layouts.current.set(
         key,
@@ -526,7 +529,7 @@ export function GraphCanvas({
       if (previous && (previous.nodes === nodeSet || view === "details"))
         cy.viewport({ zoom: previous.zoom, pan: previous.pan });
       else fitGraph(cy, true);
-      const before = last.current?.view === view ? last.current.positions : null;
+      const before = last.current?.positions ?? null;
       // The clicked service stays at the same point of the screen; the rest moves around it.
       const anchor = [selectedNow.current, last.current?.selected].find(
         (id) => id && before?.has(id) && cy.getElementById(id).isNode(),
@@ -570,6 +573,7 @@ export function GraphCanvas({
       cy.on("viewport", showZoom);
       showZoom();
       cy.on("tap", "node, edge", (event) => onSelect(event.target.id()));
+      cy.on("dbltap", "node.service", (event) => onToggleExpand?.(event.target.id()));
       cy.on("tap", (event) => {
         if (event.target === cy) onSelect(null);
       });
@@ -608,6 +612,16 @@ export function GraphCanvas({
       if (red.length) frame = requestAnimationFrame(tick);
       const observer = new ResizeObserver(() => cy.resize());
       observer.observe(element);
+      if (view === "details" && previous?.nodes !== nodeSet) {
+        timers.push(window.setTimeout(() => {
+          cy.resize();
+          const opened = cy.nodes(".endpoint, .worker").union(selectedNow.current ? cy.getElementById(selectedNow.current) : cy.collection());
+          if (!opened.length) return;
+          const box = opened.boundingBox(), visible = cy.extent();
+          if (box.x1 < visible.x1 || box.x2 > visible.x2 || box.y1 < visible.y1 || box.y2 > visible.y2)
+            cy.animate({ fit: { eles: opened, padding: 64 } }, { duration: 250 });
+        }, MOVE_MS));
+      }
       refit.current = () => {
         store.clear();
         viewport.current.delete(view);
@@ -633,7 +647,7 @@ export function GraphCanvas({
       cancelled = true;
       cleanup();
     };
-  }, [graph, onSelect, meta, theme, view, nonce]);
+  }, [graph, onSelect, onToggleExpand, meta, theme, view, nonce]);
   useEffect(() => {
     const cy = core.current;
     if (!cy || ready !== graph) return;
