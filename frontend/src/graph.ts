@@ -112,17 +112,18 @@ export function buildGraph(
   view: GraphView,
   status: EdgeStatus | "all" = "all",
   query = "",
+  expanded?: Set<string>, // details view: open services and the endpoints shown in them; all when omitted
 ): DisplayGraph {
   const byId = new Map(analysis.nodes.map((n) => [n.node.id, n]));
+  const open = (id: string) =>
+    view === "details" && (!expanded || expanded.has(id));
   const owner = (id: string) => {
     const node = byId.get(id)?.node;
-    return view === "services" && node && "parentId" in node
+    return node && "parentId" in node && !(open(node.parentId) && open(id))
       ? node.parentId
       : id;
   };
-  let nodes = analysis.nodes.filter(
-    (n) => view === "details" || !("parentId" in n.node),
-  );
+  let nodes = analysis.nodes.filter((n) => owner(n.node.id) === n.node.id);
   const groups = new Map<string, DisplayEdge>();
   // Filter BEFORE aggregation: a single unexpected call must remain discoverable.
   for (const edge of analysis.edges) {

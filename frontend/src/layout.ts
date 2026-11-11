@@ -51,6 +51,7 @@ export const hiddenEdge = (
 export async function layoutGraph(
   graph: DisplayGraph,
   meta?: Map<string, NodeMeta>,
+  hint?: Map<string, Point>, // previous centres: keep columns and order when known
 ): Promise<Layout> {
   const nodes = [...graph.nodes].sort((a, b) =>
     a.node.id.localeCompare(b.node.id),
@@ -60,13 +61,23 @@ export async function layoutGraph(
     const node = byId.get(id);
     return node && "parentId" in node ? node.parentId : id;
   };
+  // Interactive ELK reads layers from x and order from y; needs every top-level node.
+  const interactive =
+    !!hint?.size && nodes.every(({ node }) => "parentId" in node || hint.has(node.id));
+  const at = (id: string, i: number) => {
+    const p = hint?.get(id) ?? hint?.get(owner(id));
+    const { w, h } = nodeSize[byId.get(id)!.type];
+    // New endpoints of a just-opened service: stack in id order inside its card.
+    return p && hint?.has(id) ? { x: p.x - w / 2, y: p.y - h / 2 } : { x: p?.x ?? 0, y: (p?.y ?? 0) + i };
+  };
   const elkNodes = new Map<string, ElkNode>(
-    nodes.map(({ node }) => [
+    nodes.map(({ node }, i) => [
       node.id,
       {
         id: node.id,
         width: nodeSize[node.type].w,
         height: nodeSize[node.type].h,
+        ...(interactive ? at(node.id, i) : {}),
         // Shared dependencies sit in the last column, so their calls still point right.
         ...(meta?.get(node.id)?.hub
           ? { layoutOptions: { "elk.layered.layering.layerConstraint": "LAST" } }
@@ -74,7 +85,19 @@ export async function layoutGraph(
       },
     ]),
   );
-  const root: ElkNode = { id: "root", layoutOptions: options, children: [] };
+  // Groups must repeat the root's hierarchical strategies, ELK rejects a mix.
+  const strategies: Record<string, string> = interactive
+    ? {
+        "elk.layered.cycleBreaking.strategy": "INTERACTIVE",
+        "elk.layered.layering.strategy": "INTERACTIVE",
+        "elk.layered.crossingMinimization.strategy": "INTERACTIVE",
+      }
+    : {};
+  const root: ElkNode = {
+    id: "root",
+    layoutOptions: { ...options, ...strategies },
+    children: [],
+  };
   for (const { node } of nodes) {
     const item = elkNodes.get(node.id)!;
     const parent = "parentId" in node ? elkNodes.get(node.parentId) : root;
@@ -83,6 +106,7 @@ export async function layoutGraph(
       delete parent.width;
       delete parent.height;
       parent.layoutOptions = {
+        ...strategies,
         // Uniform, like Cytoscape compound padding, so both agree on the frame.
         "elk.padding": `[top=${GROUP_PADDING},left=${GROUP_PADDING},bottom=${GROUP_PADDING},right=${GROUP_PADDING}]`,
       };

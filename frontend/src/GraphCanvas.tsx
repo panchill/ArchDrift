@@ -5,7 +5,12 @@ import cytoscape, {
   type SingularElementArgument,
   type StylesheetJson,
 } from "cytoscape";
-import { graphElements, type DisplayGraph, type NodeMeta } from "./graph";
+import {
+  graphElements,
+  type DisplayGraph,
+  type GraphView,
+  type NodeMeta,
+} from "./graph";
 import {
   GROUP_PADDING,
   hiddenEdge,
@@ -161,7 +166,7 @@ function styleFor(p: Palette): StylesheetJson {
         "underlay-opacity": 0,
         "underlay-color": p.accent,
         "transition-property": "opacity",
-        "transition-duration": 150,
+        "transition-duration": 250,
       },
     },
     { selector: ".endpoint, .worker", style: { ...sized("endpoint"), "corner-radius": "9px" } },
@@ -279,6 +284,8 @@ function styleFor(p: Palette): StylesheetJson {
     },
     { selector: "edge:selected", style: { label: "data(label)", width: 3 } },
     { selector: ".faded", style: { opacity: 0.15 } },
+    // Routes are computed for the final positions: hide arrows while nodes travel.
+    { selector: ".moving", style: { opacity: 0 } },
   ];
 }
 
@@ -424,19 +431,32 @@ export function zoomAtCenter(cy: Core, level: number) {
   });
 }
 
-/** Dim everything not adjacent to the element; null clears the focus. */
-function focus(cy: Core, element: SingularElementArgument | null) {
+export type Direction = "out" | "in";
+
+/** Dim everything not adjacent to the element; null clears the focus.
+ * With a direction, a node keeps only its outgoing or incoming calls. */
+function focus(
+  cy: Core,
+  element: SingularElementArgument | null,
+  direction?: Direction,
+) {
   cy.elements().removeClass("faded");
   cy.edges(".shown").removeClass("shown");
   if (!element || !element.length) return;
-  if (element.isNode())
-    element
-      .union(element.descendants())
-      .connectedEdges(".hub-edge")
-      .addClass("shown");
-  let keep = element.isNode()
-    ? (element as NodeSingular).closedNeighborhood()
-    : element.union(element.connectedNodes());
+  let keep;
+  if (element.isNode()) {
+    const inside = element.union(element.descendants());
+    const edges = inside.connectedEdges().filter((e) => {
+      if (!direction) return true;
+      const [from, to] = direction === "out" ? [e.source(), e.target()] : [e.target(), e.source()];
+      return inside.contains(from) && !inside.contains(to);
+    });
+    edges.addClass("shown");
+    keep = inside.union(edges).union(edges.connectedNodes());
+  } else {
+    element.addClass("shown");
+    keep = element.union(element.connectedNodes());
+  }
   keep = keep.union(keep.nodes().parents()).union(keep.nodes().descendants());
   cy.elements().difference(keep).addClass("faded");
 }
@@ -447,12 +467,16 @@ export function GraphCanvas({
   onSelect,
   meta,
   theme = "dark",
+  direction,
+  view,
 }: {
   graph: DisplayGraph;
+  view: GraphView;
   selected: string | null;
   onSelect: (id: string | null) => void;
   meta?: Map<string, NodeMeta>;
   theme?: Theme;
+  direction?: Direction;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const core = useRef<Core | null>(null);
@@ -465,7 +489,15 @@ export function GraphCanvas({
   const [ready, setReady] = useState<DisplayGraph | null>(null);
   const [nonce, setNonce] = useState(0);
   const [zoom, setZoom] = useState(100);
-  const view = graph.nodes.some((n) => "parentId" in n.node) ? "details" : "services";
+  // Node positions of the previous graph: expanding a service animates from them.
+  const last = useRef<{
+    view: GraphView;
+    positions: Map<string, Point>;
+    selected: string | null;
+  } | null>(null);
+  const selectedNow = useRef(selected);
+  selectedNow.current = selected;
+  const shownSelection = useRef<string | null>(null); // what the current graph displays
   useEffect(() => {
     let cancelled = false;
     let cleanup = () => {};
@@ -477,15 +509,60 @@ export function GraphCanvas({
       ...graph.edges.map((e) => e.id).sort(),
       ...[...(meta ?? [])].filter(([, m]) => m.hub).map(([id]) => id),
     ].join("|");
-    if (!layouts.current.has(key)) layouts.current.set(key, layoutGraph(graph, meta));
+    // Hint = where nodes are now, so ELK keeps columns and order instead of reshuffling.
+    const hint = last.current?.view === view ? last.current.positions : undefined;
+    if (!layouts.current.has(key))
+      layouts.current.set(
+        key,
+        layoutGraph(graph, meta, hint).catch(() => layoutGraph(graph, meta)),
+      );
     layouts.current.get(key)!.then((layout) => {
       if (cancelled || !container.current) return;
       const cy = createGraph(container.current, graph, { meta, theme, saved: store, layout });
       core.current = cy;
       const nodeSet = cy.nodes().map((n) => n.id()).sort().join("|");
       const previous = viewport.current.get(view);
-      if (previous?.nodes === nodeSet) cy.viewport({ zoom: previous.zoom, pan: previous.pan });
+      // Details: expanding a service changes the nodes, but the camera stays put.
+      if (previous && (previous.nodes === nodeSet || view === "details"))
+        cy.viewport({ zoom: previous.zoom, pan: previous.pan });
       else fitGraph(cy, true);
+      const before = last.current?.view === view ? last.current.positions : null;
+      // The clicked service stays at the same point of the screen; the rest moves around it.
+      const anchor = [selectedNow.current, last.current?.selected].find(
+        (id) => id && before?.has(id) && cy.getElementById(id).isNode(),
+      );
+      const shift = { x: 0, y: 0 };
+      if (anchor && before) {
+        const was = before.get(anchor)!,
+          now = cy.getElementById(anchor).position();
+        shift.x = now.x - was.x;
+        shift.y = now.y - was.y;
+        cy.panBy({ x: -shift.x * cy.zoom(), y: -shift.y * cy.zoom() });
+      }
+      // Known nodes move while new endpoints fade in place; arrows come after.
+      const MOVE_MS = 600;
+      const timers: number[] = [];
+      if (before) {
+        cy.edges().addClass("moving");
+        // Nodes are almost in place by then (ease-out), so routes already fit.
+        timers.push(window.setTimeout(() => cy.edges().removeClass("moving"), MOVE_MS * 0.5));
+        cy.nodes()
+          .filter((n) => !n.isParent() && !before.has(n.id()))
+          .forEach((n) => {
+            n.style("opacity", 0);
+            n.animate(
+              { style: { opacity: 1 } },
+              { duration: MOVE_MS, easing: "ease-out-cubic", complete: () => void n.removeStyle("opacity") },
+            );
+          });
+      }
+      cy.nodes().forEach((n) => {
+        const from = before?.get(n.id());
+        if (!from || n.isParent()) return;
+        const to = { ...n.position() };
+        n.position({ x: from.x + shift.x, y: from.y + shift.y });
+        n.animate({ position: to }, { duration: MOVE_MS, easing: "ease-out-cubic" });
+      });
       const showZoom = () => {
         setZoom(Math.round(cy.zoom() * 100));
         viewport.current.set(view, { nodes: nodeSet, zoom: cy.zoom(), pan: { ...cy.pan() } });
@@ -497,7 +574,7 @@ export function GraphCanvas({
         if (event.target === cy) onSelect(null);
       });
       // A dragged node invalidates the ELK routes of its edges: fall back to straight lines.
-      cy.on("grab", "node", (e) =>
+      cy.on("drag", "node", (e) =>
         e.target.union(e.target.descendants()).connectedEdges().removeClass("routed"),
       );
       cy.on("dragfree", "node", (e) =>
@@ -537,6 +614,13 @@ export function GraphCanvas({
         setNonce((n) => n + 1);
       };
       cleanup = () => {
+        timers.forEach(clearTimeout);
+        cy.nodes().stop(true, true);
+        last.current = {
+          view,
+          selected: shownSelection.current,
+          positions: new Map(cy.nodes().map((n) => [n.id(), { ...n.position() }])),
+        };
         cancelAnimationFrame(frame);
         element.removeEventListener("wheel", onWheel);
         observer.disconnect();
@@ -553,14 +637,19 @@ export function GraphCanvas({
   useEffect(() => {
     const cy = core.current;
     if (!cy || ready !== graph) return;
+    shownSelection.current = selected;
     cy.$(":selected").unselect();
     const element = selected ? cy.getElementById(selected) : null;
     if (element?.length) {
       element.select();
-      cy.animate({ center: { eles: element } }, { duration: 250 });
+      // Move the camera only when the element is off screen (e.g. picked in the panel).
+      const box = element.boundingBox(),
+        view = cy.extent();
+      if (box.x1 < view.x1 || box.x2 > view.x2 || box.y1 < view.y1 || box.y2 > view.y2)
+        cy.animate({ center: { eles: element } }, { duration: 250 });
     }
-    focus(cy, element ?? null);
-  }, [graph, ready, selected]);
+    focus(cy, element ?? null, direction);
+  }, [graph, ready, selected, direction]);
   return (
     <div className="canvas-shell">
       <div
