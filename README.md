@@ -253,7 +253,7 @@ make up
 
 Collector Demo дополнительно шлёт трейсы OTLP/HTTP protobuf без сжатия на `http://archdrift:8080/v1/traces`. На хосте тот же приём доступен как `http://localhost:8081/v1/traces`.
 
-Остальные команды: `make down` — остановить, `make reset` — остановить и стереть данные, `make logs` — логи.
+Остальные команды: `make down` — остановить, `make reset` — остановить и стереть данные, `make logs` — логи. `make model` загружает полную CALM-модель, `make model-stale` — ту же модель без связи checkout → email. Адрес API задаёт `ARCHDRIFT_URL`, по умолчанию `http://localhost:8081`.
 
 Атрибуты `archdrift.*` в спаны Demo добавляют процессоры Collector. Пока их нет, трейсы уже доходят до archdrift, но часть рёбер PostgreSQL и Kafka может не собраться.
 
@@ -263,7 +263,9 @@ Collector Demo дополнительно шлёт трейсы OTLP/HTTP protob
 
 1. `make up` — поднимается стенд, генератор создаёт заказы, трейсы приходят в archdrift.
 2. UI на http://localhost:5173 пока рисует согласованные моки. Живой граф подключает отдельная задача.
-3. Сценарий защиты «устаревшая модель» (`make model` / `make model-stale`) появится вместе с загрузкой CALM: связь checkout → email должна стать красной, затем снова зелёной.
+3. `make model` загружает полную модель.
+4. `make model-stale` загружает ту же модель без связи checkout → email. На живом анализе это ребро становится `unexpected`.
+5. `make model` снова ставит полную модель. Команды можно чередовать: перед записью читается текущая ревизия.
 
 ## CI
 

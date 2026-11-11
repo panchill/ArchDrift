@@ -1,6 +1,9 @@
 DEMO_REF ?= 3.1.0
 DEMO_DIR := opentelemetry-demo
 ROOT := $(abspath .)
+ARCHDRIFT_URL ?= http://localhost:8081
+MODEL := examples/opentelemetry-demo.architecture.json
+STALE_EDGE := checkout--post-oteldemo-CheckoutService-PlaceOrder--to--email--post-send_order_confirmation
 
 COMPOSE = cd $(DEMO_DIR) && \
 	ARCHDRIFT_ROOT=$(ROOT) \
@@ -14,7 +17,7 @@ COMPOSE = cd $(DEMO_DIR) && \
 	--env-file .env \
 	--env-file .env.override
 
-.PHONY: up down reset logs
+.PHONY: up down reset logs model model-stale
 
 up: $(DEMO_DIR)/.git
 	touch $(DEMO_DIR)/.env.override
@@ -43,3 +46,11 @@ logs:
 
 $(DEMO_DIR)/.git:
 	DEMO_REF=$(DEMO_REF) ./scripts/clone-demo.sh
+
+model:
+	jq . $(MODEL) | ARCHDRIFT_URL=$(ARCHDRIFT_URL) ./scripts/put-architecture.sh
+
+model-stale:
+	jq --arg id '$(STALE_EDGE)' \
+		'if any(.relationships[]; .["unique-id"] == $$id) | not then error("нет связи \($$id)") else del(.relationships[] | select(.["unique-id"] == $$id)) end' \
+		$(MODEL) | ARCHDRIFT_URL=$(ARCHDRIFT_URL) ./scripts/put-architecture.sh

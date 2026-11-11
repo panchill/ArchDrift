@@ -16,9 +16,9 @@ const analysis = fixture as Analysis;
 describe("graph transformation", () => {
   it("keeps all detailed nodes, typed operations and canonical identities", () => {
     const graph = buildGraph(analysis, "details");
-    expect(graph.nodes).toHaveLength(87);
+    expect(graph.nodes).toHaveLength(90);
     expect(graph.edges).toHaveLength(64);
-    expect(new Set(graphElements(graph).map((e) => e.data.id)).size).toBe(151);
+    expect(new Set(graphElements(graph).map((e) => e.data.id)).size).toBe(154);
     const db = graph.edges.filter(
       (e) =>
         e.source === "service:accounting" &&
