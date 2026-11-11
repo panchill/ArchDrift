@@ -4,7 +4,24 @@ exporters:
     compression: none
     encoding: proto
 
+processors:
+  # Дописывает атрибуты, которых нет в спанах Demo. Существующие ключи не перезаписывает.
+  transform/archdrift:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["db.system.name"], attributes["db.system"]) where attributes["db.system.name"] == nil and attributes["db.system"] == "postgresql"
+          - set(attributes["db.namespace"], attributes["db.name"]) where attributes["db.namespace"] == nil and attributes["db.name"] != nil
+          - set(attributes["db.namespace"], "astronomy_db") where attributes["db.namespace"] == nil and attributes["db.system.name"] == "postgresql"
+          - set(attributes["archdrift.postgres.instance"], "astronomy-db") where attributes["archdrift.postgres.instance"] == nil and attributes["db.system.name"] == "postgresql"
+          - set(attributes["messaging.operation.type"], "send") where attributes["messaging.operation.type"] == nil and attributes["messaging.operation"] == "publish"
+          - set(attributes["messaging.operation.type"], "process") where attributes["messaging.operation.type"] == nil and (attributes["messaging.operation"] == "process" or attributes["messaging.operation"] == "receive")
+          - set(attributes["archdrift.kafka.cluster"], "kafka") where attributes["archdrift.kafka.cluster"] == nil and attributes["messaging.system"] == "kafka"
+          - set(attributes["http.request.method"], attributes["http.method"]) where attributes["http.request.method"] == nil and attributes["http.method"] != nil and attributes["http.route"] != nil
+
 service:
   pipelines:
     traces:
+      processors: [resource_detection, memory_limiter, transform/sanitize_spans, gen_ai_normalizer, transform/redact_sensitive_data, redaction, transform/archdrift]
       exporters: [debug, otlp_grpc/jaeger, span_metrics, otlp_http/archdrift]
