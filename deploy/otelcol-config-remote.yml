@@ -1,0 +1,15 @@
+# Третий конфиг Collector, только для `make up-remote`.
+# Добавляет копию трейсов в удалённый ArchDrift (например, на Railway) поверх
+# otelcol-config-extras.yml: процессоры те же, локальный archdrift продолжает получать трейсы.
+# Адрес берётся из переменной ARCHDRIFT_REMOTE_URL, в репозитории его нет.
+exporters:
+  otlp_http/archdrift_remote:
+    endpoint: ${env:ARCHDRIFT_REMOTE_URL}
+    compression: none
+    encoding: proto
+
+service:
+  pipelines:
+    traces:
+      # Список целиком: при слиянии конфигов списки заменяются, а не дополняются.
+      exporters: [debug, otlp_grpc/jaeger, span_metrics, otlp_http/archdrift, otlp_http/archdrift_remote]
