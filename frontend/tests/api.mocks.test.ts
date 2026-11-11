@@ -3,7 +3,8 @@ import architecture from "../public/mocks/architecture.json";
 import analysis from "../public/mocks/analysis.json";
 import type { CalmModel } from "../src/types";
 afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
-it("uses fixtures and keeps mock uploads in memory", async () => {
+it("uses fixtures only when opted in and keeps mock uploads in memory", async () => {
+  vi.stubEnv("VITE_MOCKS", "1");
   vi.resetModules();
   const api = await import("../src/api");
   vi.stubGlobal("fetch", vi.fn(async (url: string) => new Response(JSON.stringify(url.includes("analysis") ? analysis : architecture))));

@@ -432,6 +432,18 @@ export function zoomAtCenter(cy: Core, level: number) {
   });
 }
 
+function revealSelection(cy: Core, selected: string | null) {
+  if (!selected) return;
+  const element = cy.getElementById(selected);
+  if (!element.length) return;
+  const visibleElements = element.isEdge() ? element.union(element.connectedNodes()) : element;
+  const box = visibleElements.boundingBox(), view = cy.extent();
+  if (box.x1 < view.x1 || box.x2 > view.x2 || box.y1 < view.y1 || box.y2 > view.y2) {
+    cy.stop(true, false);
+    cy.animate({ fit: { eles: visibleElements, padding: 64 } }, { duration: 250 });
+  }
+}
+
 export type Direction = "out" | "in";
 
 /** Dim everything not adjacent to the element; null clears the focus.
@@ -610,7 +622,11 @@ export function GraphCanvas({
         frame = requestAnimationFrame(tick);
       };
       if (red.length) frame = requestAnimationFrame(tick);
-      const observer = new ResizeObserver(() => cy.resize());
+      const observer = new ResizeObserver(() => {
+        cy.resize();
+        // Opening the inspector shrinks the canvas after the selection effect.
+        revealSelection(cy, selectedNow.current);
+      });
       observer.observe(element);
       if (view === "details" && previous?.nodes !== nodeSet) {
         timers.push(window.setTimeout(() => {
@@ -656,13 +672,10 @@ export function GraphCanvas({
     const element = selected ? cy.getElementById(selected) : null;
     if (element?.length) {
       element.select();
-      // Move the camera only when the element is off screen (e.g. picked in the panel).
-      const box = element.boundingBox(),
-        view = cy.extent();
-      if (box.x1 < view.x1 || box.x2 > view.x2 || box.y1 < view.y1 || box.y2 > view.y2)
-        cy.animate({ center: { eles: element } }, { duration: 250 });
     }
     focus(cy, element ?? null, direction);
+    cy.resize();
+    revealSelection(cy, selected);
   }, [graph, ready, selected, direction]);
   return (
     <div className="canvas-shell">

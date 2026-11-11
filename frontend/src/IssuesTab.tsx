@@ -10,7 +10,7 @@ export function IssuesTab({ snapshot, version, nodes, filter, setFilter, highlig
   return <main className="page page-wide">
     <div className="page-heading"><div><h1>Нарушения</h1><p className="muted">Модель v{version}</p></div><div className="segmented" aria-label="Фильтр нарушений">{(["all", "unexpected", "indeterminate"] as const).map(status => {
       const count = status === "all" ? issues.length : issues.filter(e => e.status === status).length;
-      return status !== "all" && !count ? null : <button key={status} aria-pressed={filter === status} onClick={() => setFilter(status)}>{status === "all" ? "Все" : `● ${statusLabels[status]}`} {count}</button>;
+      return status !== "all" && !count ? null : <button key={status} aria-pressed={filter === status} onClick={() => setFilter(status)}>{status !== "all" && <span className={`status-dot ${status}`} aria-hidden="true" />} {status === "all" ? "Все" : statusLabels[status]} {count}</button>;
     })}</div></div>
     {!issues.length ? <p className="empty-state">Нарушений нет. Все наблюдаемые связи есть в модели.</p> : <div className="table-wrap"><table className="table issues-table"><thead><tr>{["Статус", "Связь", "Вызов", "Частота", "Впервые", ""].map((s, i) => <th key={i}>{s}</th>)}</tr></thead><tbody>{issues.filter(e => filter === "all" || e.status === filter).map(e => <tr key={edgeKey(e)} className={edgeKey(e) === highlighted ? "hl" : ""}>
       <td className={e.status}><span className={`status-dot ${e.status}`} /> {statusLabels[e.status]}</td>
