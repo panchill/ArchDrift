@@ -5,8 +5,10 @@ import type { Analysis, Edge } from "../src/types";
 import {
   buildGraph,
   edgeKey,
+  findSearchMatches,
   graphElements,
   nodeMeta,
+  servicesWithoutTraffic,
   type DisplayGraph,
 } from "../src/graph";
 import { createGraph, toSegments, zoomAtCenter } from "../src/GraphCanvas";
@@ -103,30 +105,47 @@ describe("graph transformation", () => {
     expect(cy.nodes().filter((n) => n.isChild())).toHaveLength(2);
     cy.destroy();
   });
-  it("finds endpoints while in service view and keeps adjacent resources", () => {
-    const graph = buildGraph(
-      analysis,
-      "services",
-      "all",
-      " ProductCatalogService ",
-    );
-    expect(
-      graph.nodes.some((n) => n.node.id === "service:product-catalog"),
-    ).toBe(true);
-    expect(
-      graph.nodes.some(
-        (n) => n.node.id === "postgres:astronomy-db:astronomy_db",
-      ),
-    ).toBe(true);
-    expect(buildGraph(analysis, "details", "all", "does-not-exist")).toEqual({
-      nodes: [],
-      edges: [],
-    });
+  it("ranks service and word prefixes, then orders matches as laid out", () => {
+    const { nodes } = buildGraph(analysis, "services");
+    const positions = new Map([
+      ["service:frontend", { x: 30, y: 10 }],
+      ["service:frontend-web", { x: 10, y: 10 }],
+      ["service:frontend-proxy", { x: 0, y: 30 }],
+    ]);
+    expect(findSearchMatches(nodes, " SHIPP ", positions)).toEqual(["service:shipping"]);
+    expect(findSearchMatches(nodes, "Proxy", positions)).toEqual(["service:frontend-proxy"]);
+    expect(findSearchMatches(nodes, "Front", positions)).toEqual(["service:frontend-web", "service:frontend", "service:frontend-proxy"]);
+    expect(findSearchMatches(nodes, "hipp", positions)).toEqual([]);
+    expect(findSearchMatches(nodes, "ProductCatalogService", positions)).toEqual([]);
+    expect(findSearchMatches(nodes, "service", positions)).toEqual([]);
+  });
+  it("searches every component type by its displayed name or telemetry name", () => {
+    const nodes: Analysis["nodes"] = [...analysis.nodes, {
+      node: { type: "worker", id: "worker:email:queue-worker", label: "Email consumer", parentId: "service:email", workerName: "queue-worker" },
+      known: true, observed: true,
+    }];
+    const find = (query: string) => findSearchMatches(nodes, query, new Map());
+    expect(find("db")).toEqual(["postgres:astronomy-db:astronomy_db"]);
+    expect(find("astronomy-db")).toEqual(["postgres:astronomy-db:astronomy_db"]);
+    expect(find("kafka")).toEqual(["kafka:kafka:orders"]);
+    expect(find("orders")).toEqual(["kafka:kafka:orders"]);
+    expect(find("/api/experimental")).toEqual(["endpoint:frontend:GET:%2Fapi%2Fexperimental"]);
+    expect(find("queue-worker")).toEqual(["worker:email:queue-worker"]);
+  });
+  it("groups only known services without observations or connected endpoints", () => {
+    const snapshot = { ...analysis, nodes: analysis.nodes.map(n =>
+      n.node.type !== "service" ? n : { ...n, observed: false, known: n.node.id !== "service:quote" }
+    ), edges: analysis.edges.filter(e => e.source.startsWith("endpoint:checkout:")) };
+    const idle = servicesWithoutTraffic(snapshot);
+    expect(idle.has("service:shipping")).toBe(false);
+    expect(idle.has("service:checkout")).toBe(false);
+    expect(idle.has("service:quote")).toBe(false);
+    expect(idle.has("service:telemetry-docs")).toBe(true);
   });
   it("never mutates the API snapshot across views or filters", () => {
     const before = JSON.stringify(analysis);
     buildGraph(analysis, "services");
-    buildGraph(analysis, "details", "unexpected", "payment");
+    buildGraph(analysis, "details", "unexpected");
     expect(JSON.stringify(analysis)).toBe(before);
   });
   it("compares observation timestamps as instants, including timezone offsets", () => {

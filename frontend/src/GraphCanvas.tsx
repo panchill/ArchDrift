@@ -16,6 +16,8 @@ import {
   hiddenEdge,
   layoutGraph,
   nodeSize,
+  placeNoTraffic,
+  type Box,
   type Layout,
   type Point,
   type Route,
@@ -209,6 +211,10 @@ function styleFor(p: Palette): StylesheetJson {
       style: { "border-color": p.bad, "border-style": "dashed", "border-width": 1.5 },
     },
     { selector: ".unobserved", style: { opacity: 0.4 } },
+    { selector: ".zone-hidden", style: { visibility: "hidden" } },
+    { selector: "node.search-match", style: {
+      opacity: 1, "underlay-color": p.accent, "underlay-opacity": 0.8, "underlay-padding": 5,
+    } },
     {
       selector: "node:selected",
       style: { "underlay-opacity": 0.35, "underlay-padding": 5, "border-color": p.text },
@@ -432,15 +438,41 @@ export function zoomAtCenter(cy: Core, level: number) {
   });
 }
 
-function revealSelection(cy: Core, selected: string | null) {
+function visibleArea(cy: Core): Box {
+  const container = cy.container();
+  const area = container?.closest(".canvas-area");
+  const top = container?.getBoundingClientRect().top ?? 0;
+  const bounds = (selector: string) =>
+    Array.from(area?.querySelectorAll(selector) ?? [], el => el.getBoundingClientRect()).filter(box => box.height);
+  return {
+    x1: 0, x2: cy.width(),
+    y1: Math.max(0, ...bounds(".toolbar, .graph-result").map(box => box.bottom - top)),
+    y2: Math.min(cy.height(), ...bounds(".canvas-tools, .legend").map(box => box.top - top)),
+  };
+}
+
+function fitViewport(cy: Core, box: Box, padding: number, maxZoom = cy.maxZoom()) {
+  const area = visibleArea(cy);
+  const zoom = Math.max(cy.minZoom(), Math.min(maxZoom,
+    (area.x2 - area.x1 - 2 * padding) / Math.max(1, box.x2 - box.x1),
+    (area.y2 - area.y1 - 2 * padding) / Math.max(1, box.y2 - box.y1),
+  ));
+  return {
+    zoom,
+    pan: { x: (area.x1 + area.x2 - (box.x1 + box.x2) * zoom) / 2,
+      y: (area.y1 + area.y2 - (box.y1 + box.y2) * zoom) / 2 },
+  };
+}
+
+function revealSelection(cy: Core, selected: string | null, center: boolean) {
   if (!selected) return;
   const element = cy.getElementById(selected);
-  if (!element.length) return;
-  const visibleElements = element.isEdge() ? element.union(element.connectedNodes()) : element;
-  const box = visibleElements.boundingBox(), view = cy.extent();
-  if (box.x1 < view.x1 || box.x2 > view.x2 || box.y1 < view.y1 || box.y2 > view.y2) {
+  if (!element.length || element.hasClass("zone-hidden")) return;
+  const items = element.isEdge() ? element.union(element.connectedNodes()) : element;
+  const box = items.renderedBoundingBox(), area = visibleArea(cy);
+  if (center || box.x1 < area.x1 || box.x2 > area.x2 || box.y1 < area.y1 || box.y2 > area.y2) {
     cy.stop(true, false);
-    cy.animate({ fit: { eles: visibleElements, padding: 64 } }, { duration: 250 });
+    cy.animate(fitViewport(cy, items.boundingBox(), 28, Math.max(cy.zoom(), 0.8)), { duration: 250 });
   }
 }
 
@@ -476,6 +508,11 @@ function focus(
 
 export function GraphCanvas({
   graph,
+  idle,
+  minutes,
+  searchTarget,
+  onPositions,
+  navigation,
   selected,
   onSelect,
   onToggleExpand,
@@ -485,6 +522,11 @@ export function GraphCanvas({
   view,
 }: {
   graph: DisplayGraph;
+  idle: Set<string>;
+  minutes: number;
+  searchTarget?: string;
+  onPositions: (positions: Map<string, Point>) => void;
+  navigation: number;
   view: GraphView;
   selected: string | null;
   onSelect: (id: string | null) => void;
@@ -500,42 +542,77 @@ export function GraphCanvas({
   // Hand-dragged positions and viewport survive polling; keyed by view.
   const saved = useRef(new Map<string, Map<string, Point>>());
   const viewport = useRef(new Map<string, { nodes: string; zoom: number; pan: Point }>());
-  const refit = useRef(() => {});
-  const [ready, setReady] = useState<DisplayGraph | null>(null);
-  const [nonce, setNonce] = useState(0);
+  const [ready, setReady] = useState<{
+    graph: DisplayGraph; cy: Core;
+    syncZone: () => void; reveal: () => void; fit: () => void;
+    afterMotion: (fn: () => void) => void;
+  } | null>(null);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("archdrift.noTrafficCollapsed") === "true");
+  const zoneFrame = useRef<HTMLDivElement>(null);
+  const collapsedNow = useRef(collapsed);
+  collapsedNow.current = collapsed;
+  const request = useRef(navigation);
+  request.current = navigation;
+  const handled = useRef(0);
+  const lastSearch = useRef<string | undefined>(undefined);
   const [zoom, setZoom] = useState(100);
   // Node positions of the previous graph: expanding a service animates from them.
-  const last = useRef<{
-    view: GraphView;
-    positions: Map<string, Point>;
-    selected: string | null;
-  } | null>(null);
+  const last = useRef<{ positions: Map<string, Point>; selected: string | null } | null>(null);
+  const dispose = useRef(() => {});
+  useEffect(() => () => dispose.current(), []);
+  const idleCount = graph.nodes.filter(({ node }) => idle.has(node.id)).length;
   const selectedNow = useRef(selected);
   selectedNow.current = selected;
   const shownSelection = useRef<string | null>(null); // what the current graph displays
   useEffect(() => {
     let cancelled = false;
-    let cleanup = () => {};
     if (!saved.current.has(view)) saved.current.set(view, new Map());
     const store = saved.current.get(view)!;
+    const isIdle = ({ node }: DisplayGraph["nodes"][number]) =>
+      idle.has("parentId" in node ? node.parentId : node.id);
+    const idleNodes = graph.nodes.filter(isIdle);
+    const active = { nodes: graph.nodes.filter(n => !isIdle(n)), edges: graph.edges };
     const key = [
-      view,
-      ...graph.nodes.map((n) => n.node.id).sort(),
+      ...active.nodes.map((n) => n.node.id).sort(),
       ...graph.edges.map((e) => e.id).sort(),
       ...[...(meta ?? [])].filter(([, m]) => m.hub).map(([id]) => id),
     ].join("|");
     // Hint = where nodes are now, so ELK keeps columns and order instead of reshuffling.
-    const hint = last.current?.positions;
+    const hint = core.current
+      ? new Map(core.current.nodes().map(n => [n.id(), { ...n.position() }]))
+      : last.current?.positions;
     if (!layouts.current.has(key))
       layouts.current.set(
         key,
-        layoutGraph(graph, meta, hint).catch(() => layoutGraph(graph, meta)),
+        layoutGraph(active, meta, hint).catch(() => layoutGraph(active, meta)),
       );
-    layouts.current.get(key)!.then((layout) => {
+    layouts.current.get(key)!.then((main) => {
       if (cancelled || !container.current) return;
+      dispose.current();
+      const layout = placeNoTraffic(main, idleNodes);
+      for (const { node } of idleNodes) store.delete(node.id);
       const cy = createGraph(container.current, graph, { meta, theme, saved: store, layout });
       core.current = cy;
-      const nodeSet = cy.nodes().map((n) => n.id()).sort().join("|");
+      const idleIds = new Set(idleNodes.map(({ node }) => node.id));
+      const zone = cy.nodes().filter(n => idleIds.has(n.id())).addClass("no-traffic").ungrabify();
+      const zoneBox = zone.boundingBox();
+      const paintZone = () => {
+        const el = zoneFrame.current;
+        if (!el || !zone.length) return;
+        const zoom = cy.zoom(), pan = cy.pan();
+        el.style.left = `${zoneBox.x1 * zoom + pan.x - 12}px`;
+        el.style.top = `${zoneBox.y1 * zoom + pan.y - 32}px`;
+        el.style.width = `${collapsedNow.current ? 194 : zoneBox.w * zoom + 24}px`;
+        el.style.height = `${collapsedNow.current ? 30 : zoneBox.h * zoom + 44}px`;
+        el.style.visibility = "visible";
+      };
+      const syncZone = () => {
+        zone.toggleClass("zone-hidden", collapsedNow.current);
+        paintZone();
+      };
+      const reportPositions = () => onPositions(new Map(cy.nodes().map(n => [n.id(), { ...n.position() }])));
+      reportPositions();
+      const nodeSet = active.nodes.map(({ node }) => node.id).sort().join("|");
       const previous = viewport.current.get(view);
       // Details: expanding a service changes the nodes, but the camera stays put.
       if (previous && (previous.nodes === nodeSet || view === "details"))
@@ -554,8 +631,9 @@ export function GraphCanvas({
         shift.y = now.y - was.y;
         cy.panBy({ x: -shift.x * cy.zoom(), y: -shift.y * cy.zoom() });
       }
-      // Known nodes move while new endpoints fade in place; arrows come after.
+      // Wait for final node positions before framing a newly selected edge.
       const MOVE_MS = 600;
+      const movements: Promise<unknown>[] = [];
       const timers: number[] = [];
       if (before) {
         cy.edges().addClass("moving");
@@ -573,16 +651,35 @@ export function GraphCanvas({
       }
       cy.nodes().forEach((n) => {
         const from = before?.get(n.id());
-        if (!from || n.isParent()) return;
+        if (!from || n.isParent() || !cy.container()) return;
         const to = { ...n.position() };
-        n.position({ x: from.x + shift.x, y: from.y + shift.y });
-        n.animate({ position: to }, { duration: MOVE_MS, easing: "ease-out-cubic" });
+        const start = { x: from.x + shift.x, y: from.y + shift.y };
+        if (Math.abs(start.x - to.x) < 0.01 && Math.abs(start.y - to.y) < 0.01) return;
+        n.position(start);
+        movements.push(new Promise<void>(resolve => {
+          n.animate({ position: to }, { duration: MOVE_MS, easing: "ease-out-cubic", complete: () => resolve() });
+        }));
       });
+      let moving = movements.length > 0;
+      const settled = Promise.all(movements).then(() => { moving = false; });
+      const afterMotion = (fn: () => void) => {
+        if (!moving) fn();
+        else void settled.then(() => { if (!cy.destroyed()) fn(); });
+      };
+      const reveal = () => {
+        if (moving) return;
+        const center = request.current !== handled.current;
+        if (center) handled.current = request.current;
+        revealSelection(cy, selectedNow.current, center);
+      };
+      if (moving) afterMotion(reveal);
       const showZoom = () => {
         setZoom(Math.round(cy.zoom() * 100));
         viewport.current.set(view, { nodes: nodeSet, zoom: cy.zoom(), pan: { ...cy.pan() } });
       };
       cy.on("viewport", showZoom);
+      cy.on("viewport", paintZone);
+      syncZone();
       showZoom();
       cy.on("tap", "node, edge", (event) => onSelect(event.target.id()));
       cy.on("dbltap", "node.service", (event) => onToggleExpand?.(event.target.id()));
@@ -593,13 +690,14 @@ export function GraphCanvas({
       cy.on("drag", "node", (e) =>
         e.target.union(e.target.descendants()).connectedEdges().removeClass("routed"),
       );
-      cy.on("dragfree", "node", (e) =>
+      cy.on("dragfree", "node", (e) => {
         e.target
           .union(e.target.descendants())
           .forEach((n: NodeSingular) => {
             if (!n.isParent()) store.set(n.id(), { ...n.position() });
-          }),
-      );
+          });
+        reportPositions();
+      });
       // Trackpad: two-finger swipe pans; pinch arrives as wheel with ctrlKey and zooms.
       const element = container.current;
       const onWheel = (e: WheelEvent) => {
@@ -625,7 +723,8 @@ export function GraphCanvas({
       const observer = new ResizeObserver(() => {
         cy.resize();
         // Opening the inspector shrinks the canvas after the selection effect.
-        revealSelection(cy, selectedNow.current);
+        paintZone();
+        reveal();
       });
       observer.observe(element);
       if (view === "details" && previous?.nodes !== nodeSet) {
@@ -638,16 +737,24 @@ export function GraphCanvas({
             cy.animate({ fit: { eles: opened, padding: 64 } }, { duration: 250 });
         }, MOVE_MS));
       }
-      refit.current = () => {
-        store.clear();
-        viewport.current.delete(view);
-        setNonce((n) => n + 1);
-      };
-      cleanup = () => {
+      const fit = () => afterMotion(() => {
+        const visible = cy.elements().not(".zone-hidden");
+        if (!visible.length && !zone.length) return;
+        let box = visible.length ? visible.boundingBox() : zoneBox;
+        if (zone.length && collapsedNow.current) {
+          const { x1, y1 } = zoneBox;
+          box = visible.length ? {
+            ...box, x1: Math.min(x1, box.x1), y1: Math.min(y1, box.y1),
+            x2: Math.max(x1, box.x2), y2: Math.max(y1, box.y2),
+          } : { ...box, x1, x2: x1, y1, y2: y1 };
+        }
+        cy.stop(true, false);
+        cy.viewport(fitViewport(cy, box, 42, 1.2));
+      });
+      dispose.current = () => {
         timers.forEach(clearTimeout);
         cy.nodes().stop(true, true);
         last.current = {
-          view,
           selected: shownSelection.current,
           positions: new Map(cy.nodes().map((n) => [n.id(), { ...n.position() }])),
         };
@@ -656,17 +763,15 @@ export function GraphCanvas({
         observer.disconnect();
         cy.destroy();
         core.current = null;
+        dispose.current = () => {};
       };
-      setReady(graph);
+      setReady({ graph, cy, syncZone, reveal, fit, afterMotion });
     });
-    return () => {
-      cancelled = true;
-      cleanup();
-    };
-  }, [graph, onSelect, onToggleExpand, meta, theme, view, nonce]);
+    return () => { cancelled = true; };
+  }, [graph, idle, onPositions, onSelect, onToggleExpand, meta, theme, view]);
   useEffect(() => {
     const cy = core.current;
-    if (!cy || ready !== graph) return;
+    if (!cy || ready?.cy !== cy || ready.graph !== graph) return;
     shownSelection.current = selected;
     cy.$(":selected").unselect();
     const element = selected ? cy.getElementById(selected) : null;
@@ -675,16 +780,56 @@ export function GraphCanvas({
     }
     focus(cy, element ?? null, direction);
     cy.resize();
-    revealSelection(cy, selected);
-  }, [graph, ready, selected, direction]);
+    ready.reveal();
+  }, [graph, ready, selected, direction, navigation]);
+  useEffect(() => {
+    localStorage.setItem("archdrift.noTrafficCollapsed", String(collapsed));
+    if (ready?.cy === core.current) ready.syncZone();
+  }, [collapsed, ready]);
+  useEffect(() => {
+    if (!ready || ready.graph !== graph || ready.cy !== core.current) return;
+    const cy = ready.cy;
+    const target = searchTarget ? cy.getElementById(searchTarget) : cy.collection();
+    cy.nodes(".search-match").removeClass("search-match");
+    target.addClass("search-match");
+    if (lastSearch.current === searchTarget) return;
+    lastSearch.current = undefined;
+    if (!searchTarget) return;
+    let cancelled = false;
+    let animation: ReturnType<Core["animation"]> | undefined;
+    ready.afterMotion(() => {
+      if (cancelled || !target.length) return;
+      if (target.hasClass("zone-hidden")) {
+        collapsedNow.current = false;
+        setCollapsed(false);
+        ready.syncZone();
+      }
+      if (!cy.container()) return;
+      const { x, y } = target.position();
+      cy.stop(true, false);
+      animation = cy.animation({
+        ...fitViewport(cy, { x1: x, x2: x, y1: y, y2: y }, 0, Math.max(cy.zoom(), 0.8)),
+        duration: 220,
+      }).play();
+      void animation.promise("complete").then(() => {
+        if (!cancelled) lastSearch.current = searchTarget;
+      });
+    });
+    return () => { cancelled = true; animation?.stop(); };
+  }, [graph, ready, searchTarget]);
   return (
     <div className="canvas-shell">
       <div
         ref={container}
         className="graph-canvas"
-        role={ready === graph ? "img" : undefined}
+        role={ready?.graph === graph ? "img" : undefined}
         aria-label={`Граф архитектуры: ${graph.nodes.length} узлов, ${graph.edges.length} связей. Для выбора используйте список связей и узлов.`}
       />
+      {!!idleCount && <div ref={zoneFrame} className="no-traffic-zone">
+        <button type="button" aria-expanded={!collapsed} onClick={() => setCollapsed(value => !value)}>
+          Нет трафика за {minutes} мин · {idleCount} <span aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
+        </button>
+      </div>}
       {graph.nodes.length === 0 && (
         <div className="graph-empty">
           Ничего не найдено. Измените поиск или фильтр.
@@ -721,8 +866,8 @@ export function GraphCanvas({
           +
         </button>
         <button
-          title="Пересчитать раскладку и вписать граф"
-          onClick={() => refit.current()}
+          title="Вписать всю схему"
+          onClick={() => ready?.fit()}
         >
           Вписать
         </button>
