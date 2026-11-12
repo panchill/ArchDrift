@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
-import { ApiError, uploadArchitecture } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { ApiError, resetArchitecture, uploadArchitecture } from "./api";
 import type { Analysis, Architecture } from "./types";
 import { readModelFile, type Read } from "./upload";
-import { STATUS_TEXT, translate } from "./serverErrors";
+import { resetFailure, STATUS_TEXT, translate } from "./serverErrors";
 import { perMinute, plural, WORDS } from "./text";
 
 function loadedAt(value: string) {
@@ -11,18 +11,47 @@ function loadedAt(value: string) {
   const day = date.toDateString() === now.toDateString() ? "сегодня" : date.toDateString() === yesterday.toDateString() ? "вчера" : date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   return `${day} в ${date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
 }
-export function ModelTab({ architecture, snapshot, uploadedFile, onUploaded, onGraph }: {
+function ResetDialog({ version, busy, error, onCancel, onConfirm, onDownload }: {
+  version: number; busy: boolean; error: string; onCancel: () => void; onConfirm: () => void; onDownload: () => void;
+}) {
+  const cancel = useRef<HTMLButtonElement>(null);
+  useEffect(() => { cancel.current?.focus(); }, []);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      onCancel();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [onCancel]);
+  return <div className="dialog-backdrop"><div role="dialog" aria-modal="true" aria-labelledby="reset-title" className="dialog">
+    <h2 id="reset-title">Сбросить модель v{version}?</h2>
+    <p>Модель удалится с сервера. Схема и нарушения пропадут, пока не загрузите новую. Трейсы сохранятся.</p>
+    <button type="button" className="text-link" onClick={onDownload}>Скачать JSON перед сбросом ↓</button>
+    {error && <p className="dialog-error" role="alert">{error}</p>}
+    <div className="dialog-actions">
+      <button ref={cancel} type="button" className="button ghost" onClick={onCancel}>Отмена</button>
+      <button type="button" className="button danger" onClick={onConfirm} disabled={busy} aria-busy={busy}>{busy && <span className="spinner" aria-hidden="true" />}Сбросить</button>
+    </div>
+  </div></div>;
+}
+export function ModelTab({ architecture, snapshot, uploadedFile, onUploaded, onGraph, onReset }: {
   architecture: Architecture | null; snapshot: Analysis | null; uploadedFile?: string;
-  onUploaded: (value: Architecture, name: string) => void; onGraph: () => void;
+  onUploaded: (value: Architecture, name: string) => void; onGraph: () => void; onReset: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const pending = useRef(false);
+  const resetPending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
   const [file, setFile] = useState<Read | null>(null);
   const [failure, setFailure] = useState<{ title: string; rows: { place?: string; path?: string; message: string }[] } | null>(null);
   const [success, setSuccess] = useState(false);
   const [withoutTraffic, setWithoutTraffic] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
   async function upload(candidate?: File) {
     if (!candidate || pending.current) return;
     pending.current = true; setBusy(true); setFailure(null); setSuccess(false); setOver(false);
@@ -46,6 +75,18 @@ export function ModelTab({ architecture, snapshot, uploadedFile, onUploaded, onG
     const link = document.createElement("a"); link.href = url; link.download = `architecture-v${architecture.version}.json`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  async function reset() {
+    if (!architecture || resetPending.current) return;
+    resetPending.current = true; setResetBusy(true); setResetError("");
+    try {
+      await resetArchitecture(architecture.version);
+      setConfirmReset(false); setResetBusy(false); resetPending.current = false; onReset();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) { setConfirmReset(false); setResetBusy(false); resetPending.current = false; onReset(); return; }
+      setResetError(resetFailure(e)); setResetBusy(false); resetPending.current = false;
+    }
+  }
+  const closeReset = () => { if (!resetBusy) { setConfirmReset(false); setResetError(""); } };
   const model = architecture?.model;
   const names = new Map(model?.nodes.map(n => [n["unique-id"], n.name]));
   const types = new Map(model?.nodes.map(n => [n["unique-id"], n["node-type"]]));
@@ -65,7 +106,7 @@ export function ModelTab({ architecture, snapshot, uploadedFile, onUploaded, onG
     <div className="page-heading">
       <div><h1>{architecture ? `Модель v${architecture.version}` : "Загрузите модель архитектуры"}</h1>
         <p className="muted">{architecture ? `Загружена ${loadedAt(architecture.updatedAt)}${uploadedFile ? ` из ${uploadedFile}` : ""}` : "ArchDrift сравнивает CALM-модель с тем, что видно в трейсах. Схема появится, как только будет модель."}</p></div>
-      {architecture && <div className="actions"><button className="button ghost" onClick={download}>Скачать JSON</button><button className="button primary" disabled={busy} onClick={() => input.current?.click()}>{busy ? "Загружаем…" : "Загрузить новую версию"}</button></div>}
+      {architecture && <div className="actions"><button className="button ghost" onClick={download}>Скачать JSON</button><button className="button danger" onClick={() => { setResetError(""); setConfirmReset(true); }}>Сбросить модель</button><button className="button primary" disabled={busy} onClick={() => input.current?.click()}>{busy ? "Загружаем…" : "Загрузить новую версию"}</button></div>}
     </div>
     {!architecture && !failure && <button className={`dropzone ${over ? "over" : ""}`} onDragOver={e => { e.preventDefault(); if (!busy) setOver(true); }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }} onDrop={e => { e.preventDefault(); void upload(e.dataTransfer.files[0]); }} disabled={busy} onClick={() => input.current?.click()}><span className="upload-icon">↑</span><strong>{busy ? "Загружаем…" : "Перетащите architecture.json сюда"}</strong><span>или <u>выберите файл</u> · CALM 1.2, до 16 МБ</span></button>}
     {failure && <>
@@ -74,6 +115,7 @@ export function ModelTab({ architecture, snapshot, uploadedFile, onUploaded, onG
       <button className="button primary" disabled={busy} onClick={() => input.current?.click()}>{busy ? "Загружаем…" : "Выбрать другой файл"}</button>
     </>}
     {success && <div className="ok-box" role="status">● Модель загружена. Сравнение с трейсами уже идёт. <button className="button ghost" onClick={onGraph}>Открыть схему</button></div>}
+    {confirmReset && architecture && <ResetDialog version={architecture.version} busy={resetBusy} error={resetError} onCancel={closeReset} onConfirm={() => { void reset(); }} onDownload={download} />}
     {architecture && <>
       <div className="stats">{stats.map((s, i) => <div key={i}><strong>{s.split(" ")[0]}</strong><span>{s.slice(s.indexOf(" ") + 1)}</span></div>)}</div>
       <section className="table-wrap"><div className="table-heading"><strong>Связи модели</strong><span className="muted">{visible} из {relations.length} видны в трейсах</span><progress max={relations.length || 1} value={visible} aria-label="Связи, видимые в трейсах" /><div className="segmented"><button aria-pressed={!withoutTraffic} onClick={() => setWithoutTraffic(false)}>Все</button><button aria-pressed={withoutTraffic} onClick={() => setWithoutTraffic(true)}>Без трафика {relations.length - visible}</button></div></div>

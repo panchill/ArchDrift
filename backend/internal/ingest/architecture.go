@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,7 @@ func NewArchitectureHandler(architecture *usecase.Architecture) *ArchitectureHan
 func RegisterArchitectureRoutes(router *gin.Engine, handler *ArchitectureHandler) {
 	router.GET("/api/v1/architecture", handler.Get)
 	router.PUT("/api/v1/architecture", handler.Put)
+	router.DELETE("/api/v1/architecture", handler.Delete)
 }
 
 func (h *ArchitectureHandler) Get(c *gin.Context) {
@@ -88,6 +90,48 @@ func (h *ArchitectureHandler) Put(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, saved)
+}
+
+func (h *ArchitectureHandler) Delete(c *gin.Context) {
+	version, ok := deleteVersion(c.Query("version"))
+	if !ok {
+		writeValidationError(c, []architecture.Detail{{
+			Field:   "/version",
+			Message: "expected an integer revision greater than or equal to 1",
+		}})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), architectureTimeout)
+	defer cancel()
+	err := h.architecture.Delete(ctx, version)
+	if errors.Is(err, architecture.ErrNotConfigured) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    "architecture_not_configured",
+			"message": "Architecture has not been configured",
+		})
+		return
+	}
+	if conflict, ok := errors.AsType[*architecture.VersionConflict](err); ok {
+		c.JSON(http.StatusConflict, gin.H{
+			"code":           "architecture_version_conflict",
+			"message":        "Reload the current architecture and merge your changes",
+			"currentVersion": conflict.CurrentVersion,
+		})
+		return
+	}
+	if err != nil {
+		writeArchitectureError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func deleteVersion(raw string) (int64, bool) {
+	version, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || version < 1 {
+		return 0, false
+	}
+	return version, true
 }
 
 func writeValidationError(c *gin.Context, details []architecture.Detail) {

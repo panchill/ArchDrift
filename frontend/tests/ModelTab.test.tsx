@@ -19,7 +19,7 @@ it.each([
   { nodes: architecture.model.nodes, relationships: [{ "unique-id": "broken", "relationship-type": { connects: { source: null } } }] },
 ])("rejects malformed mock uploads without replacing the current model: %j", async model => {
   const user = userEvent.setup(), onUploaded = vi.fn();
-  render(<ModelTab architecture={architecture} snapshot={null} onUploaded={onUploaded} onGraph={vi.fn()} />);
+  render(<ModelTab architecture={architecture} snapshot={null} onUploaded={onUploaded} onGraph={vi.fn()} onReset={vi.fn()} />);
   await user.upload(screen.getByLabelText("Файл CALM"), file(model));
   expect(await screen.findByRole("alert")).toHaveTextContent("Сервер не принял модель");
   expect(screen.getByRole("heading", { name: "Модель v1" })).toBeVisible();
@@ -32,7 +32,7 @@ it.each([
 ])("distinguishes HTTP errors from no response: %s", async (error, message) => {
   vi.spyOn(api, "uploadArchitecture").mockRejectedValue(error);
   const user = userEvent.setup();
-  render(<ModelTab architecture={null} snapshot={null} onUploaded={vi.fn()} onGraph={vi.fn()} />);
+  render(<ModelTab architecture={null} snapshot={null} onUploaded={vi.fn()} onGraph={vi.fn()} onReset={vi.fn()} />);
   await user.upload(screen.getByLabelText("Файл CALM"), file());
   expect(await screen.findByRole("alert")).toHaveTextContent(message as string);
 });
@@ -40,7 +40,7 @@ it("accepts drops only on the empty dropzone, not the loaded model", async () =>
   const upload = vi.spyOn(api, "uploadArchitecture").mockResolvedValue(architecture);
   function Host() {
     const [saved, setSaved] = useState<Architecture | null>(null);
-    return <ModelTab architecture={saved} snapshot={null} onUploaded={setSaved} onGraph={vi.fn()} />;
+    return <ModelTab architecture={saved} snapshot={null} onUploaded={setSaved} onGraph={vi.fn()} onReset={vi.fn()} />;
   }
   render(<Host />);
   const drop = { dataTransfer: { files: [file()] } };
@@ -51,6 +51,45 @@ it("accepts drops only on the empty dropzone, not the loaded model", async () =>
   expect(upload).toHaveBeenCalledTimes(1);
   fireEvent.drop(screen.getByRole("table"), drop);
   expect(upload).toHaveBeenCalledTimes(1);
+});
+it("asks before resetting and leaves the model on cancel or escape", async () => {
+  const user = userEvent.setup(), onReset = vi.fn();
+  const reset = vi.spyOn(api, "resetArchitecture").mockResolvedValue();
+  render(<ModelTab architecture={architecture} snapshot={null} onUploaded={vi.fn()} onGraph={vi.fn()} onReset={onReset} />);
+  await user.click(screen.getByRole("button", { name: "Сбросить модель" }));
+  expect(screen.getByRole("dialog")).toHaveTextContent("Сбросить модель v1?");
+  expect(screen.getByRole("button", { name: "Отмена" })).toHaveFocus();
+  await user.click(screen.getByRole("button", { name: "Отмена" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Сбросить модель" }));
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(reset).not.toHaveBeenCalled();
+  expect(onReset).not.toHaveBeenCalled();
+});
+it.each([
+  [undefined, true],
+  [new api.ApiError(404, { code: "architecture_not_configured", message: "gone" }), true],
+  [new api.ApiError(409, { code: "architecture_version_conflict", message: "stale", currentVersion: 6 }), false],
+  [new TypeError("fetch failed"), false],
+])("reset dialog %#", async (error, cleared) => {
+  const user = userEvent.setup(), onReset = vi.fn();
+  const reset = vi.spyOn(api, "resetArchitecture");
+  if (error) reset.mockRejectedValue(error); else reset.mockResolvedValue();
+  render(<ModelTab architecture={architecture} snapshot={null} onUploaded={vi.fn()} onGraph={vi.fn()} onReset={onReset} />);
+  await user.click(screen.getByRole("button", { name: "Сбросить модель" }));
+  await user.click(screen.getByRole("button", { name: "Сбросить" }));
+  if (cleared) {
+    expect(onReset).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  } else {
+    expect(onReset).not.toHaveBeenCalled();
+    expect(await screen.findByRole("alert")).toHaveTextContent(error instanceof api.ApiError && error.status === 409
+      ? "Модель обновили с другого устройства (сейчас v6)"
+      : "Не удалось сбросить модель");
+    expect(screen.getByRole("dialog")).toBeVisible();
+  }
+  expect(reset).toHaveBeenCalledWith(architecture.version);
 });
 it("preserves the saved mock model and revision after an invalid replacement", async () => {
   const saved = await api.uploadArchitecture(architecture.model, 1);

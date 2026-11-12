@@ -296,4 +296,25 @@ describe("new architecture flow", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(document.body.textContent).not.toMatch(/Обновлено|Последние|спанов|Телеметрия неполная|Endpoints и воркеры|Канонический ID|CALM ID/);
   });
+  it("returns to the upload screen after the model is reset", async () => {
+    const user = userEvent.setup();
+    let gone = false;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (init?.method === "DELETE") { gone = true; return new Response(null, { status: 204 }); }
+      if (gone && String(url).includes("architecture")) return json({ code: "architecture_not_configured" }, 404);
+      if (gone && String(url).includes("analysis")) return json({ code: "architecture_not_configured" }, 409);
+      return response(url);
+    });
+    render(<App />);
+    await screen.findByRole("img");
+    await user.click(screen.getByRole("tab", { name: /Модель/ }));
+    await user.click(screen.getByRole("button", { name: "Сбросить модель" }));
+    await user.click(screen.getByRole("button", { name: "Сбросить" }));
+    expect(await screen.findByRole("heading", { name: "Загрузите модель архитектуры" })).toBeVisible();
+    expect(screen.getByText("Модель сброшена")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Сбросить модель" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Схема" })).toBeDisabled();
+    const deleted = vi.mocked(fetch).mock.calls.find(([, init]) => init?.method === "DELETE");
+    expect(String(deleted?.[0])).toBe("/api/v1/architecture?version=1");
+  });
 });

@@ -8,11 +8,12 @@ import (
 	"github.com/panchill/ArchDrift/backend/internal/architecture"
 )
 
-// ArchitectureRepository replaces the current document only when expected
-// matches its revision. Both the comparison and replacement must be atomic.
+// ArchitectureRepository replaces or deletes the current document only when
+// expected matches its revision. The comparison and the write are atomic.
 type ArchitectureRepository interface {
 	GetArchitecture(ctx context.Context) (architecture.Snapshot, error)
 	PutArchitecture(ctx context.Context, model json.RawMessage, expected int64) (architecture.Snapshot, error)
+	DeleteArchitecture(ctx context.Context, expected int64) error
 }
 
 type Architecture struct {
@@ -42,4 +43,11 @@ func (a *Architecture) Replace(ctx context.Context, raw json.RawMessage) (archit
 		return architecture.Snapshot{}, fmt.Errorf("replace architecture: %w", err)
 	}
 	return snapshot, nil
+}
+
+func (a *Architecture) Delete(ctx context.Context, version int64) error {
+	if err := a.repository.DeleteArchitecture(ctx, version); err != nil {
+		return fmt.Errorf("delete architecture: %w", err)
+	}
+	return nil
 }

@@ -2,7 +2,7 @@
 openapi: 3.0.3
 info:
   title: ArchDrift MVP API
-  version: 0.4.0
+  version: 0.5.0
   description: 'MVP: HTTP, workers, PostgreSQL, Kafka. REST — JSON; ingestion — OTLP
     protobuf. Подробности: instrumentation.yaml.'
 servers:
@@ -78,6 +78,60 @@ paths:
                 currentVersion: 2
         '415':
           $ref: "#/components/responses/UnsupportedMediaType"
+        '500':
+          $ref: "#/components/responses/InternalError"
+        '503':
+          $ref: "#/components/responses/Unavailable"
+    delete:
+      tags:
+      - Architecture
+      operationId: deleteArchitecture
+      summary: Удалить ожидаемую архитектуру
+      description: |-
+        Удаляет модель, если query-параметр version совпадает с текущей.
+        Спаны не изменяются. Следующий PUT с metadata.archdrift.version = 0
+        создаёт версию 1, как при первой загрузке.
+        После удаления GET /api/v1/analysis возвращает 409 architecture_not_configured.
+      parameters:
+      - name: version
+        in: query
+        required: true
+        description: Текущая ревизия. Целое число не меньше 1.
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      responses:
+        '204':
+          description: Модель удалена
+        '400':
+          description: version отсутствует или не целое число не меньше 1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                code: validation_error
+                message: Invalid CALM architecture
+                details:
+                - field: /version
+                  message: expected an integer revision greater than or equal to 1
+        '404':
+          description: Модель ещё не загружена; code = architecture_not_configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '409':
+          description: version не совпадает с текущей; модель не удалена
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchitectureVersionConflict"
+              example:
+                code: architecture_version_conflict
+                message: Reload the current architecture and merge your changes
+                currentVersion: 2
         '500':
           $ref: "#/components/responses/InternalError"
         '503':

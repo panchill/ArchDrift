@@ -18,4 +18,13 @@ it("uses fixtures only when opted in and keeps mock uploads in memory", async ()
   expect(await api.loadArchitecture(signal)).toEqual(uploaded);
   expect(fetch).toHaveBeenCalledTimes(2);
   expect((await api.loadAnalysis(signal))?.architectureVersion).toBe(2);
+  await expect(api.resetArchitecture(uploaded.version + 1)).rejects.toMatchObject({ status: 409, body: { currentVersion: uploaded.version } });
+  await api.resetArchitecture(uploaded.version);
+  const calls = vi.mocked(fetch).mock.calls.length;
+  await expect(api.loadArchitecture(signal)).resolves.toBeNull();
+  await expect(api.loadAnalysis(signal)).resolves.toBeNull();
+  expect(fetch).toHaveBeenCalledTimes(calls);
+  const again = await api.uploadArchitecture(architecture.model as CalmModel, 0);
+  expect(again.version).toBe(1);
+  expect(await api.loadArchitecture(signal)).toEqual(again);
 });
