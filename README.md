@@ -101,3 +101,4 @@ VITE_MOCKS=1 npm run dev
 - [Локальная разработка фронтенда](frontend/README.md) и [бэкенда](backend/README.md)
 - [Просмотр CALM-модели](docs/calm.md)
 - [CI и тесты](docs/ci.md)
+- [Ссылка на презентацию](https://docs.google.com/presentation/d/1w6pg9ssCyWDO8zPHga0J3pnRvvUVSsNGfThyUJkGd0o/edit?usp=sharing)
