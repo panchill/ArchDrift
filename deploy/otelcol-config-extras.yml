@@ -18,7 +18,8 @@ processors:
           - set(attributes["messaging.operation.type"], "send") where attributes["messaging.operation.type"] == nil and attributes["messaging.operation"] == "publish"
           - set(attributes["messaging.operation.type"], "process") where attributes["messaging.operation.type"] == nil and (attributes["messaging.operation"] == "process" or attributes["messaging.operation"] == "receive")
           - set(attributes["archdrift.kafka.cluster"], "kafka") where attributes["archdrift.kafka.cluster"] == nil and attributes["messaging.system"] == "kafka"
-          - set(attributes["http.request.method"], attributes["http.method"]) where attributes["http.request.method"] == nil and attributes["http.method"] != nil and attributes["http.route"] != nil
+          # Envoy и load-generator пишут http.method без http.route. Маршрут не обязателен: без него связь строится на уровне сервиса.
+          - set(attributes["http.request.method"], attributes["http.method"]) where attributes["http.request.method"] == nil and attributes["http.method"] != nil
 
 service:
   pipelines:
