@@ -4,6 +4,7 @@ import { STATUS_TEXT } from "./serverErrors";
 import { calmFormatError, jsonLines } from "./jsonLines";
 import { parseModel } from "./upload";
 import type { Architecture } from "./types";
+import { JsonEditor } from "./JsonEditor";
 
 export function ModelEditor({ architecture, onSaved, onCancel }: {
   architecture: Architecture; onSaved: (value: Architecture) => void; onCancel: () => void;
@@ -47,8 +48,8 @@ export function ModelEditor({ architecture, onSaved, onCancel }: {
   return <dialog ref={dialog} className="model-editor" aria-labelledby="editor-title" onCancel={e => { e.preventDefault(); if (!pending.current) onCancel(); }}>
     <div className="editor-body">
       <h2 id="editor-title">Редактирование модели v{architecture.version}</h2>
-      <p className="muted" id="editor-help">CALM 1.2 · до 16 МБ. Изменения применятся после сохранения и проверки сервером. Версия обновляется автоматически.</p>
-      <textarea aria-label="JSON модели" aria-describedby="editor-help" autoFocus spellCheck={false} wrap="off" disabled={busy} value={source} onChange={e => { setSource(e.target.value); setErrors([]); }} />
+      <p className="muted" id="editor-help">CALM 1.2 · до 16 МБ. Tab / Shift+Tab — отступ выделенных строк, Ctrl+Space — подсказки, Ctrl+M — переключить Tab на переход между элементами. Изменения применятся после сохранения.</p>
+      <JsonEditor value={source} disabled={busy} onChange={value => { setSource(value); setErrors([]); }} />
       {errors.length > 0 && <section className="error-box" role="alert">{errors.map((error, i) => <p key={i}>{error.message}</p>)}</section>}
       <div className="actions">
         <button className="button" disabled={busy} onClick={() => { const model = parse(); if (model) setSource(JSON.stringify(model, null, 2)); }}>Форматировать JSON</button>

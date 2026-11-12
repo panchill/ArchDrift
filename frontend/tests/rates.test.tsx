@@ -15,7 +15,7 @@ const snapshot: Analysis = { ...raw as Analysis, to: "2026-11-10T10:10:00Z", edg
 const nodes = new Map(snapshot.nodes.map(n => [n.node.id, n]));
 const edge = buildGraph(snapshot, "services").edges[0];
 const model = architecture as Architecture;
-const props = { architecture: model, snapshot, nodes, direction: "out" as const, setDirection: vi.fn(), expanded: null, onExpand: vi.fn(), onShow: vi.fn(), onClose: vi.fn() };
+const props = { architecture: model, snapshot, nodes, direction: "out" as const, setDirection: vi.fn(), expanded: null, onExpand: vi.fn(), onShow: vi.fn(), onClose: vi.fn(), onModelSaved: vi.fn() };
 
 it("uses the analysis interval in model relationship rows", () => {
   render(<ModelTab architecture={model} snapshot={snapshot} onUploaded={vi.fn()} onGraph={vi.fn()} onReset={vi.fn()} />);

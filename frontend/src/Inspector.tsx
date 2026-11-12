@@ -1,21 +1,39 @@
-import { useEffect, useState } from "react";
-import { JAEGER } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { ApiError, JAEGER, uploadArchitecture } from "./api";
 import { calmSnippet } from "./calmSnippet";
 import { buildGraph, ownerId, serviceName, statusLabels, type DisplayEdge, type NodeMeta } from "./graph";
 import { callName, clockTime, perMinute, reason, shortRoute } from "./text";
-import type { Analysis, Architecture, Edge, GraphNode } from "./types";
+import type { Analysis, Architecture, CalmRelationship, Edge, GraphNode } from "./types";
 import type { Direction } from "./GraphCanvas";
 
-function EdgePanel({ edge, nodes, architecture, snapshot }: { edge: DisplayEdge; nodes: Map<string, GraphNode>; architecture: Architecture; snapshot: Analysis }) {
+function EdgePanel({ edge, nodes, architecture, snapshot, onModelSaved }: { edge: DisplayEdge; nodes: Map<string, GraphNode>; architecture: Architecture; snapshot: Analysis; onModelSaved: (value: Architecture) => void }) {
   const member = edge.members.find(e => e.status === edge.status) ?? edge;
   const ops = edge.status === "unexpected" ? edge.members.filter(e => e.status === "unexpected").reduce((n, e) => n + e.observedOperations, 0) : edge.observedOperations;
   const a = serviceName(member.source, nodes), b = serviceName(member.target, nodes);
   const phrase = member.type === "db_query" ? `${a} обращается к базе ${b}` : member.type === "publish" ? `${a} пишет в топик ${b}` : member.type === "consume" ? `${b} читает топик ${a}` : `${a} вызывает ${b}`;
   const source = nodes.get(member.source)?.node;
-  const snippet = calmSnippet(member, nodes);
+  const snippet = calmSnippet(member, nodes, architecture.model.relationships.map(r => r["unique-id"]));
   const trace = `${JAEGER}/trace/${member.exampleTraceId}`;
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const pending = useRef(false);
+  const [adding, setAdding] = useState(false), [addError, setAddError] = useState("");
+  const stale = architecture.version !== snapshot.architectureVersion;
+  useEffect(() => { setAddError(""); }, [member.source, member.target, member.type]);
+  async function addRelationship() {
+    if (pending.current || stale || typeof snippet !== "string") return;
+    pending.current = true; setAdding(true); setAddError("");
+    try {
+      const relationship = JSON.parse(snippet) as CalmRelationship;
+      const model = { ...architecture.model, relationships: [...architecture.model.relationships, relationship] };
+      onModelSaved(await uploadArchitecture(model, architecture.version, false));
+    } catch (e) {
+      setAddError(e instanceof ApiError && e.status === 409
+        ? "Модель изменилась. Дождитесь обновления и повторите."
+        : e instanceof ApiError && e.status === 400 ? "Сервер отклонил связь. Проверьте модель."
+        : "Не удалось добавить связь. Попробуйте ещё раз.");
+    } finally { pending.current = false; setAdding(false); }
+  }
   useEffect(() => { if (copied) { const timer = setTimeout(() => setCopied(false), 2000); return () => clearTimeout(timer); } }, [copied]);
   return <>
     <span className={`eyebrow ${edge.status}`}>{statusLabels[edge.status]}</span><h3>{a} <span className="arrow">→</span> {b}</h3>
@@ -34,6 +52,8 @@ function EdgePanel({ edge, nodes, architecture, snapshot }: { edge: DisplayEdge;
       try { await navigator.clipboard.writeText(snippet); setCopied(true); setCopyError(false); } catch { setCopyError(true); }
     }}>{copied ? "Скопировано" : "Копировать"}</button>}</div>
       {typeof snippet === "string" ? <pre className="snippet">{snippet}</pre> : <p className="muted">Узла {snippet.missing} нет в модели — сначала добавьте его.</p>}
+      {typeof snippet === "string" && <button className="button primary" disabled={adding || stale} onClick={() => void addRelationship()}>{adding ? "Добавляем…" : stale ? "Обновляем анализ…" : "Добавить в модель"}</button>}
+      {addError && <p role="alert">{addError}</p>}
       {copyError && <p role="alert">Не удалось скопировать. Выделите текст и скопируйте вручную.</p>}
     </section>}
   </>;
@@ -82,8 +102,9 @@ export function Inspector(props: {
   edge?: DisplayEdge; item?: GraphNode; architecture: Architecture; snapshot: Analysis; nodes: Map<string, GraphNode>;
   meta?: NodeMeta; direction: Direction; setDirection: (v: Direction) => void; expanded: string | null;
   onExpand: (id: string) => void; onShow: (e: Edge) => void; onClose: () => void;
+  onModelSaved: (value: Architecture) => void;
 }) {
   return <aside className="inspector" aria-label="Детали графа"><button className="close" aria-label="Закрыть панель" onClick={props.onClose}>×</button><div className="inspector-body">
-    {props.edge ? <EdgePanel key={props.edge.id} edge={props.edge} nodes={props.nodes} architecture={props.architecture} snapshot={props.snapshot} /> : props.item ? <NodePanel {...props} item={props.item} /> : null}
+    {props.edge ? <EdgePanel key={props.edge.id} edge={props.edge} nodes={props.nodes} architecture={props.architecture} snapshot={props.snapshot} onModelSaved={props.onModelSaved} /> : props.item ? <NodePanel {...props} item={props.item} /> : null}
   </div></aside>;
 }

@@ -6,6 +6,10 @@ import type { Analysis } from "../src/types";
 const analysis = raw as Analysis, nodes = new Map(analysis.nodes.map(n => [n.node.id, n]));
 const edge = analysis.edges.find(e => e.status === "unexpected")!;
 describe("CALM relationship proposal", () => {
+  it("avoids existing relationship IDs without changing the proposed endpoints", () => {
+    const proposal = JSON.parse(calmSnippet(edge, nodes) as string), id = proposal["unique-id"];
+    expect(JSON.parse(calmSnippet(edge, nodes, [id, `${id}--2`]) as string)).toEqual({ ...proposal, "unique-id": `${id}--3` });
+  });
   it("uses owner IDs and endpoint interfaces", () => {
     const snippet = JSON.parse(calmSnippet(edge, nodes) as string);
     expect(snippet["relationship-type"].connects.source).toEqual({ node: "checkout", interfaces: [nodes.get(edge.source)!.calmInterfaceId] });

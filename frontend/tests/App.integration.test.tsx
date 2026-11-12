@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { EditorView } from "@codemirror/view";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Core, CytoscapeOptions } from "cytoscape";
@@ -45,24 +46,72 @@ async function noModel() {
   render(<App />);
   await screen.findByText("Загрузите модель архитектуры");
 }
+const editor = () => EditorView.findFromDOM(screen.getByLabelText("JSON модели"))!;
+function changeJSON(value: string) {
+  act(() => { editor().dispatch({ changes: { from: 0, to: editor().state.doc.length, insert: value } }); });
+}
 describe("new architecture flow", () => {
+  async function openProposal() {
+    const user = userEvent.setup(); render(<App />); await screen.findByRole("img");
+    const edge = (analysis as Analysis).edges.find(e => e.status === "unexpected")!;
+    const nodes = new Map((analysis as Analysis).nodes.map(n => [n.node.id, n]));
+    act(() => { cores.at(-1)!.getElementById(serviceEdgeId(edge, nodes)).emit("tap"); });
+    return user;
+  }
+  it("appends the displayed relationship once and refreshes the graph after saving", async () => {
+    const user = await openProposal();
+    const proposal = JSON.parse(screen.getByLabelText("Детали графа").querySelector("pre")!.textContent!);
+    let finish!: (response: Response) => void;
+    const put = new Promise<Response>(resolve => { finish = resolve; });
+    const clean = { ...analysis, architectureVersion: 2, edges: analysis.edges.map(e => e.status === "unexpected" ? { ...e, status: "declared", matchedRelationshipIds: [proposal["unique-id"]] } : e) };
+    vi.mocked(fetch).mockImplementation(async (url, init) => init?.method === "PUT" ? put : json(String(url).includes("/analysis") ? clean : architecture));
+    await user.dblClick(screen.getByRole("button", { name: "Добавить в модель" }));
+    expect(screen.getByRole("button", { name: "Добавляем…" })).toBeDisabled();
+    const puts = vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === "PUT");
+    expect(puts).toHaveLength(1);
+    const sent = JSON.parse(String(puts[0][1]?.body));
+    expect(sent).toEqual({ ...architecture.model, relationships: [...architecture.model.relationships, proposal] });
+    await act(async () => { finish(json({ ...architecture, version: 2, model: { ...sent, metadata: { ...sent.metadata, archdrift: { ...sent.metadata.archdrift, version: 2 } } } })); });
+    expect(await screen.findByText("Связь добавлена в модель")).toBeVisible();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Добавить в модель" })).toBeNull());
+    expect(screen.getByRole("tab", { name: /Модель v2/ })).toBeVisible();
+    expect(within(screen.getByLabelText("Детали графа")).getByText("Есть в модели")).toBeVisible();
+  });
+  it.each([
+    [409, "Модель изменилась"], [400, "Сервер отклонил связь"], [503, "Не удалось добавить связь"],
+  ])("preserves the model on add failure %s and never retries automatically", async (status, message) => {
+    const user = await openProposal();
+    vi.mocked(fetch).mockResolvedValue(json({}, status));
+    await user.click(screen.getByRole("button", { name: "Добавить в модель" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("button", { name: "Добавить в модель" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: /Модель v1/ })).toBeVisible();
+    expect(vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === "PUT")).toHaveLength(1);
+  });
+  it("does not offer adding a relationship with an undeclared node", async () => {
+    const missing = { ...analysis, nodes: analysis.nodes.map(n => n.node.id === "service:email" ? { ...n, calmNodeId: undefined } : n) };
+    vi.mocked(fetch).mockImplementation(async url => json(String(url).includes("/analysis") ? missing : architecture));
+    await openProposal();
+    expect(screen.getByText(/сначала добавьте его/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Добавить в модель" })).toBeNull();
+  });
   async function editModel() {
     const user = userEvent.setup(); render(<App />); await screen.findByRole("img");
     await user.click(screen.getByRole("tab", { name: /Модель/ }));
-    await user.click(screen.getByRole("button", { name: "Редактировать JSON" }));
+    await user.click(screen.getByRole("button", { name: "Редактировать модель" }));
     return user;
   }
   it("formats JSON, cancels edits and saves all fields with the original revision", async () => {
     const user = await editModel();
     const changed = { ...architecture.model, description: "Edited", custom: { keep: true } };
-    fireEvent.change(screen.getByLabelText("JSON модели"), { target: { value: JSON.stringify(changed) } });
+    changeJSON(JSON.stringify(changed));
     await user.click(screen.getByRole("button", { name: "Форматировать JSON" }));
-    expect(screen.getByLabelText("JSON модели")).toHaveValue(JSON.stringify(changed, null, 2));
+    expect(editor().state.doc.toString()).toBe(JSON.stringify(changed, null, 2));
     await user.click(screen.getByRole("button", { name: "Отменить" }));
     expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
-    await user.click(screen.getByRole("button", { name: "Редактировать JSON" }));
-    expect(screen.getByLabelText("JSON модели")).toHaveValue(JSON.stringify(architecture.model, null, 2));
-    fireEvent.change(screen.getByLabelText("JSON модели"), { target: { value: JSON.stringify(changed) } });
+    await user.click(screen.getByRole("button", { name: "Редактировать модель" }));
+    expect(editor().state.doc.toString()).toBe(JSON.stringify(architecture.model, null, 2));
+    changeJSON(JSON.stringify(changed));
     const saved = { ...architecture, version: 2, model: { ...changed, metadata: { ...changed.metadata, archdrift: { ...changed.metadata.archdrift, version: 2 } } } };
     vi.mocked(fetch).mockImplementation(async url => json(String(url).includes("/analysis") ? { ...analysis, architectureVersion: 2, edges: [] } : saved));
     await user.click(screen.getByRole("button", { name: "Сохранить" }));
@@ -76,24 +125,24 @@ describe("new architecture flow", () => {
   });
   it.each(["{ broken", "null", '{"nodes": []}'])("keeps invalid JSON without sending it: %s", async source => {
     const user = await editModel();
-    fireEvent.change(screen.getByLabelText("JSON модели"), { target: { value: source } });
+    changeJSON(source);
     await user.click(screen.getByRole("button", { name: "Сохранить" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/Некорректный (JSON|формат CALM)/);
-    expect(screen.getByLabelText("JSON модели")).toHaveValue(source);
+    expect(editor().state.doc.toString()).toBe(source);
     expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
   });
   it("preserves the draft across polling and conflicts without retrying a PUT", async () => {
     const user = await editModel();
     const source = JSON.stringify({ ...architecture.model, description: "Draft" });
-    fireEvent.change(screen.getByLabelText("JSON модели"), { target: { value: source } });
+    changeJSON(source);
     vi.mocked(fetch).mockImplementation(async (url, init) => init?.method === "PUT"
       ? json({ code: "architecture_version_conflict" }, 409)
       : json(String(url).includes("/analysis") ? { ...analysis, architectureVersion: 2 } : { ...architecture, version: 2 }));
     await act(async () => { await poll(); });
-    expect(screen.getByLabelText("JSON модели")).toHaveValue(source);
+    expect(editor().state.doc.toString()).toBe(source);
     await user.click(screen.getByRole("button", { name: "Сохранить" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Модель уже изменена на сервере");
-    expect(screen.getByLabelText("JSON модели")).toHaveValue(source);
+    expect(editor().state.doc.toString()).toBe(source);
     const puts = vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === "PUT");
     expect(puts).toHaveLength(1);
     expect(JSON.parse(String(puts[0][1]?.body)).metadata.archdrift.version).toBe(1);
@@ -104,11 +153,11 @@ describe("new architecture flow", () => {
   ])("keeps editor content on server error %s", async (status, body, message) => {
     const user = await editModel();
     const source = JSON.stringify(architecture.model);
-    fireEvent.change(screen.getByLabelText("JSON модели"), { target: { value: source } });
+    changeJSON(source);
     vi.mocked(fetch).mockResolvedValue(json(body, status));
     await user.click(screen.getByRole("button", { name: "Сохранить" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
-    expect(screen.getByLabelText("JSON модели")).toHaveValue(source);
+    expect(editor().state.doc.toString()).toBe(source);
     expect(screen.getByRole("button", { name: "Сохранить" })).toBeEnabled();
   });
   it("gates graph/issues without a model, including hash navigation", async () => {

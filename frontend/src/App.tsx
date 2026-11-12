@@ -187,7 +187,9 @@ export default function App() {
         </div>
         {!violations && !toast && !offline && <div className="toast ok graph-result">● Все наблюдаемые связи есть в модели</div>}
         <div className="float legend" aria-label="Легенда графа">{Object.entries(statusLabels).map(([key, label]) => <span key={key}><i className={`legend-line ${key}`} />{label}</span>)}<span><i className="legend-idle" />Есть в модели, нет трафика</span></div>
-      </section>{selected && <Inspector edge={edge} item={item} architecture={architecture} snapshot={snapshot} nodes={nodes} meta={meta?.get(selected)} direction={direction} setDirection={setDirection} expanded={expanded} onExpand={onExpand} onShow={show} onClose={() => setSelected(null)} />}</div>}
+      </section>{selected && <Inspector edge={edge} item={item} architecture={architecture} snapshot={snapshot} nodes={nodes} meta={meta?.get(selected)} direction={direction} setDirection={setDirection} expanded={expanded} onExpand={onExpand} onShow={show} onClose={() => setSelected(null)} onModelSaved={value => {
+        architectureRef.current = value; setArchitecture(value); setUploaded(undefined); setAttempt(a => a + 1); setNotice("Связь добавлена в модель");
+      }} />}</div>}
     {editing && <ModelEditor architecture={editing} onCancel={() => setEditing(null)} onSaved={value => {
       architectureRef.current = value; setArchitecture(value); setUploaded(undefined); setEditing(null); setAttempt(a => a + 1);
     }} />}
