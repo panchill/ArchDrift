@@ -60,6 +60,7 @@ describe("new architecture flow", () => {
   }
   it("appends the displayed relationship once and refreshes the graph after saving", async () => {
     const user = await openProposal();
+    await user.click(screen.getByRole("button", { name: "Показать JSON" }));
     const proposal = JSON.parse(screen.getByLabelText("Детали графа").querySelector("pre")!.textContent!);
     let finish!: (response: Response) => void;
     const put = new Promise<Response>(resolve => { finish = resolve; });
@@ -92,7 +93,8 @@ describe("new architecture flow", () => {
     const missing = { ...analysis, nodes: analysis.nodes.map(n => n.node.id === "service:email" ? { ...n, calmNodeId: undefined } : n) };
     vi.mocked(fetch).mockImplementation(async url => json(String(url).includes("/analysis") ? missing : architecture));
     await openProposal();
-    expect(screen.getByText(/сначала добавьте его/)).toBeVisible();
+    expect(screen.getByText(/Сервиса Email нет в модели/)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Скопировать сервис и связь" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Добавить в модель" })).toBeNull();
   });
   async function editModel() {
@@ -221,8 +223,8 @@ describe("new architecture flow", () => {
     await user.click(screen.getByRole("button", { name: "Показать" }));
     const panel = within(await screen.findByLabelText("Детали графа"));
     expect(panel.getByText("Нет в модели")).toBeVisible();
-    expect(panel.getByRole("link", { name: /Открыть трейс в Jaeger/ })).toHaveAttribute("href", expect.stringContaining("/jaeger/ui/trace/"));
-    await user.click(panel.getByRole("button", { name: "Копировать" }));
+    expect(panel.getByRole("link", { name: /Открыть трейс/ })).toHaveAttribute("href", expect.stringContaining("/jaeger/ui/trace/"));
+    await user.click(panel.getByRole("button", { name: "Скопировать связь" }));
     expect(panel.getByRole("button", { name: "Скопировано" })).toBeVisible();
     expect(await navigator.clipboard.readText()).toContain('"connects"');
     await user.click(panel.getByRole("button", { name: "Закрыть панель" }));

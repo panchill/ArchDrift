@@ -23,7 +23,7 @@ import {
   type Route,
 } from "./layout";
 import type { NodeType } from "./types";
-import { plural, WORDS } from "./text";
+import { formatRate, plural, WORDS } from "./text";
 
 export type Theme = "dark" | "light";
 export const palettes = {
@@ -109,7 +109,7 @@ export function nodeSvg(
         : meta?.opsPerMinute
           ? `<circle cx="22" cy="66" r="6.5" fill="none" stroke="${p.ok}" stroke-width="1.5"/>` +
             `<path d="M19 66 l2.2 2.2 l4 -4.4" fill="none" stroke="${p.ok}" stroke-width="1.5"/>` +
-            text(36, 70, `${Math.round(meta.opsPerMinute)} опер/мин`, 12.5, p.text2)
+            text(36, 70, `${formatRate(meta.opsPerMinute)} опер/мин`, 12.5, p.text2)
           : text(14, 70, "нет вызовов в окне", 12, p.text3)) +
       (meta?.hubs.length
         ? text(w - 14, 70, `→ ${meta.hubs.join(", ")}`, 12, p.text3, `text-anchor="end"`)

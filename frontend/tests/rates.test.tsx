@@ -27,10 +27,23 @@ it("uses the analysis interval in issue rows", () => {
 });
 it("uses the analysis interval in edge facts", () => {
   render(<Inspector {...props} edge={edge} />);
-  expect(screen.getByText("20 в минуту")).toBeVisible();
+  expect(screen.getByText(/^20 в мин ·/)).toBeVisible();
 });
 it("keeps service totals and neighbor rates on the same interval", () => {
   render(<Inspector {...props} item={nodes.get(edge.source)} meta={nodeMeta(snapshot).get(edge.source)} />);
   expect(screen.getByText(/20 опер\/мин/)).toBeVisible();
   expect(screen.getByText("20/мин")).toBeVisible();
+});
+it("shows a declared edge with the model description and no copy actions", () => {
+  render(<Inspector {...props} edge={edge} />);
+  const relation = model.model.relationships.find(r => r["unique-id"] === edge.matchedRelationshipIds[0])!;
+  expect(screen.getByText("Есть в модели")).toBeVisible();
+  expect(screen.getByText(`«${relation.description}»`)).toHaveAttribute("title", edge.matchedRelationshipIds.join(", "));
+  expect(screen.queryByText("Вызов нужен?")).toBeNull();
+  expect(screen.getByRole("link", { name: /Открыть трейс/ })).toBeVisible();
+});
+it("shows rare calls as <1 per minute", () => {
+  const rare = { ...snapshot, edges: [{ ...snapshot.edges[0], observedOperations: 2 }] };
+  render(<Inspector {...props} snapshot={rare} edge={buildGraph(rare, "services").edges[0]} />);
+  expect(screen.getByText(/^<1 в мин ·/)).toBeVisible();
 });

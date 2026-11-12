@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calmSnippet } from "../src/calmSnippet";
+import { calmPatch, calmSnippet } from "../src/calmSnippet";
 import raw from "../public/mocks/analysis.json";
 import model from "../../examples/opentelemetry-demo.architecture.json";
 import type { Analysis } from "../src/types";
@@ -9,6 +9,7 @@ describe("CALM relationship proposal", () => {
   it("avoids existing relationship IDs without changing the proposed endpoints", () => {
     const proposal = JSON.parse(calmSnippet(edge, nodes) as string), id = proposal["unique-id"];
     expect(JSON.parse(calmSnippet(edge, nodes, [id, `${id}--2`]) as string)).toEqual({ ...proposal, "unique-id": `${id}--3` });
+    expect(calmPatch(edge, nodes, [id, `${id}--2`]).text).toBe(calmSnippet(edge, nodes, [id, `${id}--2`]));
   });
   it("uses owner IDs and endpoint interfaces", () => {
     const snippet = JSON.parse(calmSnippet(edge, nodes) as string);
@@ -37,5 +38,26 @@ describe("CALM relationship proposal", () => {
     const snippet = JSON.parse(calmSnippet(consume, nodes) as string);
     expect(snippet["relationship-type"].connects.source.node).toBe(nodes.get(consume.source)?.calmNodeId);
     expect(snippet.metadata.archdrift.type).toBe("consume");
+  });
+});
+describe("CALM patch for unexpected edges", () => {
+  it("is the bare relationship when both ends are in the model", () => {
+    const patch = calmPatch(edge, nodes);
+    expect(patch.missing).toEqual([]);
+    expect(patch.text).toBe(calmSnippet(edge, nodes));
+  });
+  it("adds a missing service with the called interface and links to it", () => {
+    const missing = new Map(nodes);
+    missing.set("service:email", { ...nodes.get("service:email")!, calmNodeId: undefined });
+    missing.set(edge.target, { ...nodes.get(edge.target)!, calmInterfaceId: undefined });
+    const patch = calmPatch(edge, missing);
+    expect(patch.missing).toEqual([{ label: "Email", kind: "Сервиса" }]);
+    const { nodes: added, relationships } = JSON.parse(patch.text);
+    expect(added).toHaveLength(1);
+    expect(added[0]).toMatchObject({ "unique-id": "email", "node-type": "service", name: "Email", metadata: { archdrift: { serviceName: "email" } } });
+    const iface = added[0].interfaces[0];
+    expect(iface.metadata.archdrift).toEqual({ method: "POST", route: "/send_order_confirmation" });
+    expect(relationships[0]["relationship-type"].connects.destination).toEqual({ node: "email", interfaces: [iface["unique-id"]] });
+    expect(relationships[0]["relationship-type"].connects.source.node).toBe("checkout");
   });
 });
