@@ -80,6 +80,30 @@ func (s *Store) PutArchitecture(
 	return architecture.Snapshot{}, &architecture.VersionConflict{CurrentVersion: current}
 }
 
+// DeleteArchitecture removes the model only. Spans stay, so the next upload
+// can be compared with traffic that was already collected.
+func (s *Store) DeleteArchitecture(ctx context.Context, version int64) error {
+	if version < 1 {
+		return errors.New("invalid architecture revision")
+	}
+	tag, err := s.pool.Exec(ctx, "DELETE FROM architecture WHERE singleton AND version = $1", version)
+	if err != nil {
+		return fmt.Errorf("delete architecture: %w: %w", architecture.ErrUnavailable, err)
+	}
+	if tag.RowsAffected() == 1 {
+		return nil
+	}
+	var current int64
+	const currentVersionQuery = "SELECT COALESCE((SELECT version FROM architecture WHERE singleton), 0)"
+	if err := s.pool.QueryRow(ctx, currentVersionQuery).Scan(&current); err != nil {
+		return fmt.Errorf("get current architecture revision: %w: %w", architecture.ErrUnavailable, err)
+	}
+	if current == 0 {
+		return fmt.Errorf("delete architecture: %w", architecture.ErrNotConfigured)
+	}
+	return &architecture.VersionConflict{CurrentVersion: current}
+}
+
 func withVersion(raw json.RawMessage, version int64) (json.RawMessage, error) {
 	doc := map[string]json.RawMessage{}
 	metadata := map[string]json.RawMessage{}

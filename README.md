@@ -85,7 +85,9 @@ sequenceDiagram
 
 В ответах `version` всегда равен `model.metadata.archdrift.version`. Это счётчик ревизий ArchDrift, отдельный от версии стандарта CALM `1.2`. История моделей не хранится. Отсутствующая или некорректная ревизия даёт `400`; конфликт не меняет данные и время обновления.
 
-Бэкенд реализует PUT/GET модели, проверку CALM и атомарную проверку ревизии в PostgreSQL. Инструкции загрузки и проверки — в [backend/README.md](backend/README.md). Фронтенд пока использует согласованные JSON-моки.
+Сброс удаляет только модель: `DELETE /api/v1/architecture?version=N`, где `N` — текущая версия. Ответ `204`, спаны остаются. Следующий `PUT` с `metadata.archdrift.version: 0` снова создаёт версию `1`. Нет модели — `404`, чужая версия — `409` с `currentVersion`, нет или нецелое `version` — `400`.
+
+Бэкенд реализует PUT, GET и DELETE модели, проверку CALM и атомарную проверку ревизии в PostgreSQL. Инструкции загрузки и проверки — в [backend/README.md](backend/README.md). Фронтенд пока использует согласованные JSON-моки.
 
 Узлы CALM: `service`, `worker`, `database` (PostgreSQL), `kafka-topic`. HTTP endpoints — интерфейсы сервиса. Связи — `connects`; `composed-of` связывает worker с сервисом. Привязки к телеметрии обязательны в `metadata.archdrift`.
 
@@ -226,6 +228,7 @@ ArchDrift видит только то, что есть в трейсах. По�
 | `POST` | `/v1/traces` | Приём трейсов от Collector (OTLP protobuf, без сжатия, до 4 МиБ) |
 | `GET` | `/api/v1/architecture` | Текущая модель архитектуры |
 | `PUT` | `/api/v1/architecture` | Полная замена модели (CALM 1.2 JSON) |
+| `DELETE` | `/api/v1/architecture?version=N` | Удалить модель текущей версии; спаны остаются |
 | `GET` | `/api/v1/analysis?from=…&to=…` | Граф и нарушения за интервал `[from, to)`, не больше 24 ч |
 | `GET` | `/api/v1/traces/{traceId}` | Сохранённые спаны трейса |
 | `GET` | `/healthz` | Процесс жив |
@@ -254,6 +257,8 @@ make up
 Collector Demo дополнительно шлёт трейсы OTLP/HTTP protobuf без сжатия на `http://archdrift:8080/v1/traces`. На хосте тот же приём доступен как `http://localhost:8081/v1/traces`.
 
 Остальные команды: `make down` — остановить, `make reset` — остановить и стереть данные, `make logs` — логи. `make model` загружает полную CALM-модель, `make model-stale` — ту же модель без связи checkout → email. Адрес API задаёт `ARCHDRIFT_URL`, по умолчанию `http://localhost:8081`.
+
+Сбросить загруженную модель: кнопка «Сбросить модель» на вкладке «Модель» или `curl -X DELETE 'localhost:8081/api/v1/architecture?version=N'`. `N` — текущая версия из `GET`. Трейсы сохраняются, экран возвращается к загрузке модели.
 
 ### Трейсы в удалённый ArchDrift (Railway)
 

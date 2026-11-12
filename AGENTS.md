@@ -9,7 +9,7 @@ ArchDrift — проект хакатона. Он сравнивает заде�
 - **Это MVP, а не продукт.** Цель — работающее демо на защите 13.11. Всё, что не приближает к демо, не делаем.
 - **Наблюдаемая система — только [OpenTelemetry Demo](https://github.com/open-telemetry/opentelemetry-demo) (Astronomy Shop).** Собственных демо-микросервисов нет и не будет.
 - Описание логики — в [README.md](README.md).
-- **Источники истины:** [backend/api/api.yaml](backend/api/api.yaml) и [backend/api/instrumentation.yaml](backend/api/instrumentation.yaml) (контракт 0.4.0). Код подстраивается под контракт, а не наоборот.
+- **Источники истины:** [backend/api/api.yaml](backend/api/api.yaml) (контракт 0.5.0) и [backend/api/instrumentation.yaml](backend/api/instrumentation.yaml). Код подстраивается под контракт, а не наоборот. Модель читается, заменяется и удаляется: `GET`, `PUT` и `DELETE /api/v1/architecture`.
 
 ## Структура репозитория
 
@@ -75,7 +75,7 @@ ArchDrift — проект хакатона. Он сравнивает заде�
 1. Стенд: `make up` поднимает Demo и archdrift, Collector Demo шлёт трейсы в `POST /v1/traces`.
 2. Процессоры Collector: спаны Demo несут атрибуты, нужные `instrumentation.yaml` (`service.name`, `http.route`, `rpc.*`, `db.*`, `messaging.*`, `archdrift.*`).
 3. `POST /v1/traces`: принять protobuf, сохранить спаны, ответить 200.
-4. `PUT` и `GET /api/v1/architecture`: валидация CALM 1.2, ссылок и привязок к телеметрии.
+4. `PUT`, `GET` и `DELETE /api/v1/architecture`: валидация CALM 1.2, ссылок и привязок к телеметрии. DELETE снимает модель по текущей версии и не трогает спаны.
 5. `GET /api/v1/analysis`: построение рёбер по `instrumentation.yaml` (HTTP и gRPC → `http_call`, PostgreSQL, Kafka), статусы `declared` / `unexpected` / `indeterminate`, нарушения `unexpected_edge`.
 6. `GET /healthz`.
 7. Сценарий «устаревшая модель»: `make model` загружает полную модель, `make model-stale` — копию без связи `checkout → email`. Устаревшую копию генерировать из `examples/opentelemetry-demo.architecture.json`, а не вести второй файл руками.

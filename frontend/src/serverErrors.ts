@@ -1,5 +1,5 @@
 import type { CalmModel } from "./types";
-import type { ErrorBody } from "./api";
+import { ApiError, type ErrorBody } from "./api";
 
 export const STATUS_TEXT: Record<number, string> = {
   400: "Модель не прошла проверку. Проверьте формат CALM 1.2 и содержимое файла.",
@@ -45,6 +45,11 @@ export const MESSAGES: Record<string, string> = {
   "not supported by the ArchDrift profile": "Не поддерживается профилем ArchDrift.",
   "not supported": "Не поддерживается профилем ArchDrift.",
 };
+export function resetFailure(error: unknown) {
+  if (error instanceof ApiError && error.status === 409) return `Модель обновили с другого устройства (сейчас v${error.body?.currentVersion ?? "?"}). Обновите страницу и повторите`;
+  if (error instanceof ApiError && error.status === 400) return "Некорректная версия модели. Обновите страницу и повторите.";
+  return "Не удалось сбросить модель. Попробуйте ещё раз";
+}
 const parts = (field: string) => field.replace(/\[(\d+)\]/g, "/$1").split(/[/.]/).filter(Boolean).map(s => s.replace(/~1/g, "/").replace(/~0/g, "~"));
 export function shortPath(field: string) {
   return parts(field).join(".").replace(/\.(\d+)/g, "[$1]").replace(/\.relationship-type\.connects\.destination/, " → назначение").replace(/\.relationship-type\.connects\.source/, " → источник");

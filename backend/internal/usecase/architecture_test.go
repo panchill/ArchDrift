@@ -34,6 +34,12 @@ func (r *architectureRepositoryStub) PutArchitecture(
 	return r.snapshot, r.err
 }
 
+func (r *architectureRepositoryStub) DeleteArchitecture(_ context.Context, expected int64) error {
+	r.writes++
+	r.expected = expected
+	return r.err
+}
+
 func TestArchitectureReplaceValidatesBeforeWriting(t *testing.T) {
 	validator, err := architecture.NewValidator()
 	if err != nil {
@@ -68,6 +74,28 @@ func TestArchitectureReplaceValidatesBeforeWriting(t *testing.T) {
 	} {
 		repository.err = source
 		if _, err := service.Replace(t.Context(), raw); !errors.Is(err, source) {
+			t.Fatalf("repository error identity lost: %v", err)
+		}
+	}
+}
+
+func TestArchitectureDeletePreservesErrors(t *testing.T) {
+	validator, err := architecture.NewValidator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := &architectureRepositoryStub{}
+	service := NewArchitecture(repository, validator)
+	if err := service.Delete(t.Context(), 3); err != nil || repository.writes != 1 || repository.expected != 3 {
+		t.Fatalf("delete: err=%v writes=%d version=%d", err, repository.writes, repository.expected)
+	}
+	for _, source := range []error{
+		architecture.ErrNotConfigured,
+		architecture.ErrUnavailable,
+		&architecture.VersionConflict{CurrentVersion: 4},
+	} {
+		repository.err = source
+		if err := service.Delete(t.Context(), 3); !errors.Is(err, source) {
 			t.Fatalf("repository error identity lost: %v", err)
 		}
 	}

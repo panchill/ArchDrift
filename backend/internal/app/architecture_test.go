@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
@@ -112,7 +113,53 @@ func TestArchitectureHTTP(t *testing.T) {
 	if err := json.Unmarshal(updated, &second); err != nil || second.Version != 2 {
 		t.Fatalf("invalid replacement: %s", updated)
 	}
+	del := func(query string, status int) []byte {
+		t.Helper()
+		r := httptest.NewRequest(http.MethodDelete, "/api/v1/architecture"+query, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+		if w.Code != status {
+			t.Fatalf("DELETE %s: got %d want %d: %s", query, w.Code, status, w.Body.String())
+		}
+		return w.Body.Bytes()
+	}
+	badVersion := del("", 400)
+	checkCode(badVersion, "validation_error")
+	var details struct {
+		Details []architecture.Detail
+	}
+	if err := json.Unmarshal(badVersion, &details); err != nil || len(details.Details) != 1 || details.Details[0].Field != "/version" {
+		t.Fatalf("version error: %s", badVersion)
+	}
+	for _, query := range []string{"?version=0", "?version=1.5", "?version=nope"} {
+		checkCode(del(query, 400), "validation_error")
+	}
+	stale := del("?version=1", 409)
+	checkCode(stale, "architecture_version_conflict")
+	if err := json.Unmarshal(stale, &conflict); err != nil || conflict.CurrentVersion != 2 {
+		t.Fatalf("stale delete: %s", stale)
+	}
+	if got := request("GET", "", nil, 200); !bytes.Equal(got, updated) {
+		t.Fatal("stale delete removed the model")
+	}
+	if body := del("?version=2", 204); len(body) != 0 {
+		t.Fatalf("delete body: %q", body)
+	}
+	checkCode(request("GET", "", nil, 404), "architecture_not_configured")
+	analysis := httptest.NewRequest(http.MethodGet, "/api/v1/analysis?from=2020-01-01T00:00:00Z&to=2020-01-01T00:01:00Z", nil)
+	recorded := httptest.NewRecorder()
+	router.ServeHTTP(recorded, analysis)
+	if recorded.Code != 409 {
+		t.Fatalf("analysis after delete: %d %s", recorded.Code, recorded.Body.String())
+	}
+	checkCode(recorded.Body.Bytes(), "architecture_not_configured")
+	recreated := request("PUT", "application/json", raw, 200)
+	var third architecture.Snapshot
+	if err := json.Unmarshal(recreated, &third); err != nil || third.Version != 1 {
+		t.Fatalf("version after reset: %s", recreated)
+	}
 	pool.Close()
 	checkCode(request("GET", "", nil, 503), "service_unavailable")
 	checkCode(request("PUT", "application/json", second.Model, 503), "service_unavailable")
+	checkCode(del("?version=1", 503), "service_unavailable")
 }

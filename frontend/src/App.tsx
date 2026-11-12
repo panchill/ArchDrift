@@ -27,6 +27,7 @@ export default function App() {
   const [direction, setDirection] = useState<Direction>("out");
   const [theme, setTheme] = useState<Theme>("dark");
   const [toast, setToast] = useState<{ keys: string[]; at: number } | null>(null);
+  const [notice, setNotice] = useState("");
   const [issuesFilter, setIssuesFilter] = useState<EdgeStatus | "all">("all");
   const [highlighted, setHighlighted] = useState<string>();
   const [uploaded, setUploaded] = useState<{ name: string; version: number }>();
@@ -50,6 +51,11 @@ export default function App() {
     const timer = setTimeout(() => setToast(null), Math.max(0, 20000 - (Date.now() - toast.at)));
     return () => clearTimeout(timer);
   }, [toast]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -149,6 +155,9 @@ export default function App() {
       : architecture === undefined ? <div className="loading" role="status">Загрузка архитектуры…</div>
       : tab === "model" || !architecture ? <ModelTab architecture={architecture} snapshot={snapshot} uploadedFile={uploaded?.version === architecture?.version ? uploaded?.name : undefined} onGraph={() => setTab("graph")} onUploaded={(value, name) => {
         architectureRef.current = value; setArchitecture(value); setUploaded({ name, version: value.version }); setAttempt(a => a + 1);
+      }} onReset={() => {
+        architectureRef.current = null; snapshotRef.current = null; previous.current = null;
+        setArchitecture(null); setSnapshot(null); setSelected(null); setExpanded(null); setQuery(""); setToast(null); setUploaded(undefined); setNotice("Модель сброшена"); setAttempt(a => a + 1);
       }} />
       : !snapshot ? <div className="loading" role="status">Загрузка анализа…</div>
       : tab === "issues" ? <IssuesTab snapshot={snapshot} version={architecture.version} nodes={nodes} filter={issuesFilter} setFilter={setIssuesFilter} highlighted={highlighted} onShow={show} />
@@ -178,5 +187,6 @@ export default function App() {
         <div className="float legend" aria-label="Легенда графа">{Object.entries(statusLabels).map(([key, label]) => <span key={key}><i className={`legend-line ${key}`} />{label}</span>)}<span><i className="legend-idle" />Есть в модели, нет трафика</span></div>
       </section>{selected && <Inspector edge={edge} item={item} architecture={architecture} snapshot={snapshot} nodes={nodes} meta={meta?.get(selected)} direction={direction} setDirection={setDirection} expanded={expanded} onExpand={onExpand} onShow={show} onClose={() => setSelected(null)} />}</div>}
     {offline ? <div className="toast info global-toast" role="status">Нет связи с сервером, пробуем снова</div> : toast && fresh.length > 0 && <div className="toast bad global-toast" role="status">● {fresh.length === 1 ? `Новое нарушение: ${serviceName(fresh[0].source, nodes)} → ${serviceName(fresh[0].target, nodes)}` : `Новые нарушения: ${fresh.length}`} <span className="muted">· только что</span><button className="button ghost" onClick={showToast}>Показать</button></div>}
+    {notice && <div className="toast ok global-toast" role="status">{notice}</div>}
   </div>;
 }

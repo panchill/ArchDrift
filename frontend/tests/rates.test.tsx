@@ -18,7 +18,7 @@ const model = architecture as Architecture;
 const props = { architecture: model, snapshot, nodes, direction: "out" as const, setDirection: vi.fn(), expanded: null, onExpand: vi.fn(), onShow: vi.fn(), onClose: vi.fn() };
 
 it("uses the analysis interval in model relationship rows", () => {
-  render(<ModelTab architecture={model} snapshot={snapshot} onUploaded={vi.fn()} onGraph={vi.fn()} />);
+  render(<ModelTab architecture={model} snapshot={snapshot} onUploaded={vi.fn()} onGraph={vi.fn()} onReset={vi.fn()} />);
   expect(screen.getByText("20/мин")).toBeVisible();
 });
 it("uses the analysis interval in issue rows", () => {
