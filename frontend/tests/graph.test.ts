@@ -233,6 +233,28 @@ describe("toSegments", () => {
 });
 
 describe("Cytoscape integration", () => {
+  it.each(["services", "details"] as const)("keeps routed endpoints attached after filtering %s", async view => {
+    const full = buildGraph(analysis, view), meta = nodeMeta(analysis);
+    const before = await layoutGraph(full, meta);
+    const edges = full.edges.filter(e => e.status !== "declared");
+    const keep = new Set(edges.flatMap(e => [e.source, e.target]));
+    for (const { node } of full.nodes) if (keep.has(node.id) && "parentId" in node) keep.add(node.parentId);
+    const graph = { nodes: full.nodes.filter(n => keep.has(n.node.id)), edges };
+    const layout = await layoutGraph(graph, meta, before.positions);
+    const cy = createGraph(undefined, graph, { meta, layout });
+    try {
+      cy.edges(".routed").forEach(edge => {
+        for (const side of ["source", "target"] as const) {
+          const node = edge[side](), p = node.position();
+          const [dx, dy] = String(edge.data(`${side}Endpoint`)).split(" ").map(parseFloat);
+          const box = node.boundingBox({ includeLabels: false, includeOverlays: false, includeUnderlays: false });
+          const x = p.x + dx, y = p.y + dy;
+          const distance = Math.min(Math.abs(x - box.x1), Math.abs(x - box.x2), Math.abs(y - box.y1), Math.abs(y - box.y2));
+          expect(distance, `${edge.id()} ${side}`).toBeLessThan(2);
+        }
+      });
+    } finally { cy.destroy(); }
+  });
   it.each(["services", "details"] as const)(
     "does not overlap any peer nodes in %s view",
     async (view) => {

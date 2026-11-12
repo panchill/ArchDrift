@@ -323,7 +323,8 @@ progress::-webkit-progress-value { background: var(--ok); border-radius: 5px; }
 .arrow { color: var(--text-3); }
 .snippet-section { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 8px; }
 .snippet-section strong { font-size: 13px; }
-.snippet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.snippet-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+.snippet-actions .button, .inspector-body > a.button { width: 100%; min-height: 36px; padding: 7px 12px; line-height: 20px; white-space: normal; }
 .badge { align-self: flex-start; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; color: var(--text-2); background: color-mix(in srgb, var(--text-3) 18%, transparent); }
 .badge.unexpected { color: var(--bad); background: color-mix(in srgb, var(--bad) 16%, transparent); }
 .badge.indeterminate { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }

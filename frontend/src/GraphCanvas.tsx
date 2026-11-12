@@ -637,8 +637,6 @@ export function GraphCanvas({
       const timers: number[] = [];
       if (before) {
         cy.edges().addClass("moving");
-        // Nodes are almost in place by then (ease-out), so routes already fit.
-        timers.push(window.setTimeout(() => cy.edges().removeClass("moving"), MOVE_MS * 0.5));
         cy.nodes()
           .filter((n) => !n.isParent() && !before.has(n.id()))
           .forEach((n) => {
@@ -661,7 +659,10 @@ export function GraphCanvas({
         }));
       });
       let moving = movements.length > 0;
-      const settled = Promise.all(movements).then(() => { moving = false; });
+      const settled = Promise.all(movements).then(() => {
+        moving = false;
+        if (!cy.destroyed()) cy.edges().removeClass("moving");
+      });
       const afterMotion = (fn: () => void) => {
         if (!moving) fn();
         else void settled.then(() => { if (!cy.destroyed()) fn(); });
