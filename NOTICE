@@ -1,0 +1,12 @@
+Third-party notices
+
+The FINOS CALM 1.2 JSON schemas in backend/internal/architecture/schemas/
+and frontend/tests/schemas/ are distributed under the Apache License,
+Version 2.0. See LICENSES/Apache-2.0.txt.
+
+Source: https://calm.finos.org/release/1.2/meta/
+
+architecture-as-code - FINOS
+Copyright - 2023 FINOS info@finos.org
+
+This product includes software developed at the Fintech Open Source Foundation (https://www.finos.org/).
