@@ -8,6 +8,7 @@ import { autocompletion } from "@codemirror/autocomplete";
 import { json } from "@codemirror/lang-json";
 import { tags } from "@lezer/highlight";
 import { calmCompletion } from "./calmCompletion";
+import { jsonFormattingChanges } from "./jsonFormatting";
 
 const colors = syntaxHighlighting(HighlightStyle.define([
   { tag: tags.propertyName, color: "var(--accent)" },
@@ -38,8 +39,11 @@ export function JsonEditor({ value, disabled, onChange }: {
   }, []);
   useEffect(() => {
     const editor = view.current;
-    if (editor && editor.state.doc.toString() !== value)
-      editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: value } });
+    if (editor && editor.state.doc.toString() !== value) {
+      const changes = editor.state.changes(jsonFormattingChanges(editor.state.doc.toString(), value));
+      const scroll = editor.scrollSnapshot().map(changes);
+      editor.dispatch({ changes, effects: scroll ? [scroll] : [], scrollIntoView: false });
+    }
   }, [value]);
   useEffect(() => {
     view.current?.dispatch({ effects: editable.current.reconfigure([EditorState.readOnly.of(disabled), EditorView.editable.of(!disabled)]) });

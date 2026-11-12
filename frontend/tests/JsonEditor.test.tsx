@@ -42,6 +42,21 @@ it("keeps external formatting undoable and blocks edits while saving", () => {
   expect(editor().state.doc.toString()).toBe(initial);
   expect(editor().contentDOM).toHaveAttribute("contenteditable", "false");
 });
+it("keeps the selected JSON value and maps the scroll anchor when formatting", () => {
+  const source = JSON.stringify({ nodes: Array.from({ length: 80 }, (_, i) => ({ name: `node ${i}` })), relationships: [] }, null, 4);
+  const { rerender } = render(<JsonEditor value={source} disabled={false} onChange={vi.fn()} />);
+  const view = editor(), from = source.indexOf("node 60");
+  act(() => view.dispatch({ selection: { anchor: from, head: from + 7 } }));
+  view.scrollDOM.scrollTop = 500;
+  const snapshot = vi.spyOn(view, "scrollSnapshot");
+  const formatted = JSON.stringify(JSON.parse(source), null, 2);
+  rerender(<JsonEditor value={formatted} disabled={false} onChange={vi.fn()} />);
+  const selected = view.state.selection.main;
+  expect(view.state.sliceDoc(selected.from, selected.to)).toBe("node 60");
+  expect(selected.from).toBe(formatted.indexOf("node 60"));
+  expect(snapshot).toHaveBeenCalledOnce();
+  expect(view.scrollDOM.scrollTop).toBe(500);
+});
 it.each([
   ['{"nod|"}', '"nodes"', { nodes: [] }],
   ['{"met|"}', '"metadata"', { metadata: {} }],
