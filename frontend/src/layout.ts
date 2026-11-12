@@ -20,6 +20,7 @@ export type Box = { x1: number; y1: number; x2: number; y2: number };
 export interface Layout {
   positions: Map<string, Point>;
   routes: Map<string, Route>;
+  height?: number;
   groups: Map<string, Box>; // ELK frames of services with children
 }
 
@@ -166,5 +167,30 @@ export async function layoutGraph(
     node.children?.forEach(collect);
   };
   collect(result);
-  return { positions, routes, groups };
+  return { positions, routes, groups, height: result.height };
+}
+
+/** Place disconnected services below the main layout, including any open endpoints. */
+export function placeNoTraffic(layout: Layout, idle: DisplayGraph["nodes"]): Layout {
+  if (!idle.length) return layout;
+  const positions = new Map(layout.positions);
+  const cards = idle.filter(({ node }) => node.type === "service")
+    .sort((a, b) => a.node.label.localeCompare(b.node.label));
+  const { w, h } = nodeSize.service;
+  const cellWidth = idle.length > cards.length ? NODE_WIDTH + 2 * GROUP_PADDING : w;
+  let y = (layout.height ?? 0) + 2 * h;
+  for (let i = 0; i < cards.length; i += 5) {
+    let rowHeight = h;
+    cards.slice(i, i + 5).forEach(({ node }, column) => {
+      const x = cellWidth / 2 + column * (cellWidth + 24);
+      positions.set(node.id, { x, y: y + h / 2 });
+      const children = idle.filter(n => "parentId" in n.node && n.node.parentId === node.id);
+      children.forEach((child, index) => positions.set(child.node.id, {
+        x, y: y + GROUP_PADDING + NODE_HEIGHT / 2 + index * (NODE_HEIGHT + 10),
+      }));
+      if (children.length) rowHeight = Math.max(rowHeight, 2 * GROUP_PADDING + children.length * (NODE_HEIGHT + 10));
+    });
+    y += rowHeight + 24;
+  }
+  return { ...layout, positions };
 }

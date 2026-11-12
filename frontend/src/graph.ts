@@ -1,4 +1,5 @@
 import type { ElementDefinition } from "cytoscape";
+import type { Point } from "./layout";
 import type { Analysis, Edge, EdgeStatus, GraphNode } from "./types";
 import { plural, windowMinutes, WORDS } from "./text";
 
@@ -116,11 +117,44 @@ export const serviceEdgeId = (edge: Edge, nodes: Map<string, GraphNode>) =>
 export const serviceName = (id: string, nodes: Map<string, GraphNode>) =>
   nodes.get(ownerId(id, nodes))?.node.label ?? "Неизвестный узел";
 
+export function findSearchMatches(nodes: GraphNode[], query: string, positions: Map<string, Point>): string[] {
+  const term = query.trim().toLocaleLowerCase();
+  if (!term) return [];
+  const matches = nodes.flatMap(({ node }) => {
+    const names = [node.label];
+    switch (node.type) {
+      case "service": names.push(node.serviceName); break;
+      case "postgres_database": names.push(node.database, node.instance, "PostgreSQL"); break;
+      case "kafka_topic": names.push(node.topic, node.cluster, "Kafka"); break;
+      case "endpoint": names.push(node.route); break;
+      case "worker": names.push(node.workerName); break;
+    }
+    const normalized = names.map(name => name.toLocaleLowerCase());
+    if (normalized.some(name => name.startsWith(term))) return [{ id: node.id, rank: 0 }];
+    const separator = node.type === "endpoint" ? /[\s._\/-]+/ : /[\s._-]+/;
+    if (normalized.some(name => name.split(separator).some(word => word.startsWith(term))))
+      return [{ id: node.id, rank: 1 }];
+    return [];
+  });
+  const unplaced = { x: Infinity, y: Infinity };
+  return matches.sort((a, b) => {
+    const first = positions.get(a.id) ?? unplaced, second = positions.get(b.id) ?? unplaced;
+    return a.rank - b.rank || first.y - second.y || first.x - second.x || a.id.localeCompare(b.id);
+  }).map(match => match.id);
+}
+
+export function servicesWithoutTraffic(analysis: Analysis): Set<string> {
+  const nodes = new Map(analysis.nodes.map(n => [n.node.id, n]));
+  const connected = new Set(analysis.edges.flatMap(e => [ownerId(e.source, nodes), ownerId(e.target, nodes)]));
+  return new Set(analysis.nodes.filter(({ node, known, observed }) =>
+    node.type === "service" && known && !observed && !connected.has(node.id)
+  ).map(({ node }) => node.id));
+}
+
 export function buildGraph(
   analysis: Analysis,
   view: GraphView,
   status: EdgeStatus | "all" = "all",
-  query = "",
   expanded?: Set<string>, // details view: open services and the endpoints shown in them; all when omitted
 ): DisplayGraph {
   const byId = new Map(analysis.nodes.map((n) => [n.node.id, n]));
@@ -181,29 +215,6 @@ export function buildGraph(
     }
   }
   let edges = [...groups.values()];
-  const term = query.trim().toLocaleLowerCase();
-  if (term) {
-    // Search detailed identity even in the overview (e.g. /payments or worker name).
-    const matches = new Set(
-      analysis.nodes
-        .filter((n) =>
-          JSON.stringify(n.node).toLocaleLowerCase().includes(term),
-        )
-        .map((n) => owner(n.node.id)),
-    );
-    if (view === "details") {
-      for (const { node } of analysis.nodes) {
-        if ("parentId" in node && matches.has(node.parentId))
-          matches.add(node.id);
-      }
-    }
-    edges = edges.filter((e) => matches.has(e.source) || matches.has(e.target));
-    const visible = new Set([
-      ...matches,
-      ...edges.flatMap((e) => [e.source, e.target]),
-    ]);
-    nodes = nodes.filter((n) => visible.has(n.node.id));
-  }
   if (status !== "all") {
     const connected = new Set(edges.flatMap((e) => [e.source, e.target]));
     nodes = nodes.filter((n) => connected.has(n.node.id));

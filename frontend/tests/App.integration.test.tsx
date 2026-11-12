@@ -26,6 +26,7 @@ let poll: () => Promise<void>;
 let resizeGraph: () => void;
 beforeEach(() => {
   cores.length = 0;
+  localStorage.clear();
   history.replaceState(null, "", "/");
   vi.stubGlobal("ResizeObserver", class {
     constructor(callback: () => void) { resizeGraph = callback; }
@@ -119,23 +120,19 @@ describe("new architecture flow", () => {
     const nodes = new Map((analysis as Analysis).nodes.map(n => [n.node.id, n]));
     const element = cy.getElementById(serviceEdgeId(edge, nodes));
     const box = element.union(element.connectedNodes()).boundingBox();
-    const extent = vi.spyOn(cy, "extent").mockReturnValue({ x1: box.x1 - 100, y1: box.y1 - 100, x2: box.x2 + 100, y2: box.y2 + 100, w: box.w + 200, h: box.h + 200 });
+    const width = vi.spyOn(cy, "width").mockReturnValue(box.w + 200);
+    vi.spyOn(cy, "height").mockReturnValue(box.h + 200);
+    cy.viewport({ zoom: 1, pan: { x: 100 - box.x1, y: 100 - box.y1 } });
     const animate = vi.spyOn(cy, "animate").mockReturnValue(cy);
     act(() => { element.emit("tap"); });
     expect(screen.getByLabelText("Детали графа")).toBeVisible();
     act(() => resizeGraph());
-    expect(animate).not.toHaveBeenCalled(); // A visible selection must not move the camera.
-    const resize = vi.spyOn(cy, "resize").mockImplementation(() => {
-      extent.mockReturnValue({ x1: box.x1 - 100, y1: box.y1 - 100, x2: box.x2 - 1, y2: box.y2 + 100, w: box.w + 99, h: box.h + 200 });
-      return cy;
-    });
+    expect(animate).not.toHaveBeenCalled();
+    width.mockReturnValue(box.w + 80);
     act(() => resizeGraph());
-    expect(resize).toHaveBeenCalled();
-    const fit = animate.mock.calls[0][0].fit!;
-    expect(fit.padding).toBe(64);
-    const fitted = fit.eles as ReturnType<Core["collection"]>;
-    expect(fitted.contains(element)).toBe(true);
-    expect(fitted.contains(element.connectedNodes())).toBe(true);
+    const { pan, zoom } = animate.mock.calls[0][0];
+    expect(box.x1 * Number(zoom) + pan!.x).toBeGreaterThanOrEqual(0);
+    expect(box.x2 * Number(zoom) + pan!.x).toBeLessThanOrEqual(cy.width());
     act(() => cy.emit("tap"));
     animate.mockClear();
     act(() => resizeGraph());
@@ -260,9 +257,38 @@ describe("new architecture flow", () => {
   it("searches with /, filters problems, supports theme and omits removed UI text", async () => {
     const user = userEvent.setup(); render(<App />); await screen.findByRole("img");
     await user.keyboard("/"); expect(screen.getByRole("searchbox")).toHaveFocus();
-    await user.type(screen.getByRole("searchbox"), "nonexistent-service");
-    expect(await screen.findByText(/Ничего не найдено/)).toBeVisible();
-    await user.clear(screen.getByRole("searchbox"));
+    const graph = cores.at(-1)!;
+    const input = screen.getByRole("searchbox");
+    const highlightedNode = () => graph.nodes(".search-match")[0]?.id();
+    await user.type(input, "hipp");
+    expect(await screen.findByText("Не найдено")).toBeVisible();
+    await user.clear(input);
+    await user.type(input, "Shipp");
+    expect(await screen.findByText("1 из 1")).toBeVisible();
+    expect(graph.getElementById("service:shipping").hasClass("search-match")).toBe(true);
+    await user.clear(input);
+    await user.type(input, "db");
+    expect(highlightedNode()).toBe("postgres:astronomy-db:astronomy_db");
+    await user.clear(input);
+    await user.type(input, "kafka");
+    expect(highlightedNode()).toBe("kafka:kafka:orders");
+    await user.clear(input);
+    await user.type(input, "Front");
+    expect(await screen.findByText("1 из 3")).toBeVisible();
+    const first = highlightedNode();
+    await user.click(screen.getByRole("button", { name: "Следующее совпадение" }));
+    expect(screen.getByText("2 из 3")).toBeVisible();
+    expect(highlightedNode()).not.toBe(first);
+    await user.click(screen.getByRole("button", { name: "Предыдущее совпадение" }));
+    expect(screen.getByText("1 из 3")).toBeVisible();
+    expect(highlightedNode()).toBe(first);
+    await user.click(input);
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+    expect(screen.getByText("3 из 3")).toBeVisible();
+    await user.keyboard("{Escape}");
+    expect(input).toHaveValue("");
+    expect(cores.at(-1)).toBe(graph);
+    expect(graph.nodes(".search-match")).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "Только проблемные" }));
     await screen.findByRole("img");
     expect(cores.at(-1)!.edges().every(e => e.data("status") !== "declared")).toBe(true);

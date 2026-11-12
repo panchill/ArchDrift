@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadAnalysis, loadArchitecture } from "./api";
 import { GraphCanvas, type Direction, type Theme } from "./GraphCanvas";
-import { buildGraph, edgeKey, nodeMeta, ownerId, serviceEdgeId, serviceName, statusLabels } from "./graph";
+import { buildGraph, edgeKey, findSearchMatches, nodeMeta, ownerId, serviceEdgeId, serviceName, servicesWithoutTraffic, statusLabels } from "./graph";
 import { ModelTab } from "./ModelTab";
 import { IssuesTab } from "./IssuesTab";
 import { Inspector } from "./Inspector";
 import { useHashTab, type Tab } from "./useHashTab";
+import type { Point } from "./layout";
+import { windowMinutes } from "./text";
 import type { Analysis, Architecture, Edge, EdgeStatus } from "./types";
 import "./styles.css";
 
@@ -18,6 +20,9 @@ export default function App() {
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [onlyProblems, setOnlyProblems] = useState(false), [query, setQuery] = useState("");
+  const [navigation, setNavigation] = useState(0);
+  const [matchIndex, setMatchIndex] = useState(0);
+  const [positions, setPositions] = useState(new Map<string, Point>());
   const [expanded, setExpanded] = useState<string | null>(null);
   const [direction, setDirection] = useState<Direction>("out");
   const [theme, setTheme] = useState<Theme>("dark");
@@ -34,7 +39,7 @@ export default function App() {
   useEffect(() => { if (architecture === null && tab !== "model") setTab("model"); }, [architecture, tab, setTab]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelected(null);
+      if (event.key === "Escape") { setSelected(null); setQuery(""); setMatchIndex(0); }
       if (event.key === "/" && !(event.target instanceof HTMLElement && (event.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)))) { event.preventDefault(); search.current?.focus(); }
     };
     window.addEventListener("keydown", key);
@@ -108,19 +113,27 @@ export default function App() {
   const view = expanded ? "details" : "services";
   const graph = useMemo(() => {
     if (!snapshot) return { nodes: [], edges: [] };
-    const full = buildGraph(snapshot, view, "all", query, open);
+    const full = buildGraph(snapshot, view, "all", open);
     if (!onlyProblems) return full;
     const edges = full.edges.filter(e => e.status !== "declared"), keep = new Set(edges.flatMap(e => [e.source, e.target]));
     for (const { node } of full.nodes) if (keep.has(node.id) && "parentId" in node) keep.add(node.parentId);
     return { nodes: full.nodes.filter(n => keep.has(n.node.id)), edges };
-  }, [snapshot, view, query, open, onlyProblems]);
+  }, [snapshot, view, open, onlyProblems]);
+  const idle = useMemo(() => snapshot ? servicesWithoutTraffic(snapshot) : new Set<string>(), [snapshot]);
+  const matches = useMemo(() => findSearchMatches(graph.nodes, query, positions), [graph, query, positions]);
+  const match = matches.length ? matchIndex % matches.length : 0;
+  const moveMatch = (delta: number) => {
+    if (matches.length > 1)
+      setMatchIndex(index => (index % matches.length + delta + matches.length) % matches.length);
+  };
+  const missing = !!query.trim() && !matches.length;
   const meta = useMemo(() => snapshot ? nodeMeta(snapshot) : undefined, [snapshot]);
   const edge = graph.edges.find(e => e.id === selected), item = graph.nodes.find(n => n.node.id === selected);
   useEffect(() => { if (selected && !edge && !item) setSelected(null); }, [selected, edge, item]);
   const violations = snapshot?.edges.filter(e => e.status === "unexpected").length ?? 0;
   const issues = snapshot?.edges.filter(e => e.status !== "declared").length ?? 0;
   const changeTab = (value: Tab) => { setTab(value); setHighlighted(undefined); };
-  const show = (e: Edge) => { setTab("graph"); setQuery(""); setOnlyProblems(false); setExpanded(null); setSelected(serviceEdgeId(e, nodes)); };
+  const show = (e: Edge) => { setTab("graph"); setQuery(""); setMatchIndex(0); setOnlyProblems(false); setExpanded(null); setSelected(serviceEdgeId(e, nodes)); setNavigation(value => value + 1); };
   const fresh = snapshot?.edges.filter(e => toast?.keys.includes(edgeKey(e)) && e.status === "unexpected") ?? [];
   const showToast = () => {
     if (fresh.length === 1) show(fresh[0]);
@@ -140,10 +153,29 @@ export default function App() {
       : !snapshot ? <div className="loading" role="status">Загрузка анализа…</div>
       : tab === "issues" ? <IssuesTab snapshot={snapshot} version={architecture.version} nodes={nodes} filter={issuesFilter} setFilter={setIssuesFilter} highlighted={highlighted} onShow={show} />
       : <div className="workspace"><section className="canvas-area">
-        <GraphCanvas graph={graph} selected={selected} onSelect={onSelect} onToggleExpand={onExpand} meta={meta} theme={theme} direction={item?.node.type === "postgres_database" ? "in" : item && "parentId" in item.node ? undefined : direction} view={view} />
-        <div className="float toolbar"><input ref={search} type="search" aria-label="Найти сервис" placeholder="Найти сервис" value={query} onChange={e => { setQuery(e.target.value); setSelected(null); }} /><div className="segmented"><button aria-pressed={!onlyProblems} onClick={() => { setOnlyProblems(false); setSelected(null); }}>Все связи</button><button aria-pressed={onlyProblems} onClick={() => { setOnlyProblems(true); setSelected(null); }}>Только проблемные</button></div></div>
+        <GraphCanvas graph={graph} idle={idle} minutes={Math.round(windowMinutes(snapshot))} searchTarget={matches[match]} onPositions={setPositions} navigation={navigation} selected={selected} onSelect={onSelect} onToggleExpand={onExpand} meta={meta} theme={theme} direction={item?.node.type === "postgres_database" ? "in" : item && "parentId" in item.node ? undefined : direction} view={view} />
+        <div className="float toolbar">
+          <div className="graph-search">
+            <input ref={search} type="search" aria-label="Найти на схеме" placeholder="Найти на схеме"
+              value={query} aria-invalid={missing}
+              onChange={e => { setQuery(e.target.value); setMatchIndex(0); if (e.target.value.trim()) setSelected(null); }}
+              onKeyDown={e => {
+                if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                moveMatch(e.shiftKey ? -1 : 1);
+              }} />
+            {query.trim() && <div className="search-controls">
+              <span role="status">{missing ? "Не найдено" : `${match + 1} из ${matches.length}`}</span>
+              {matches.length > 1 && <>
+                <button type="button" aria-label="Предыдущее совпадение" title="Предыдущее совпадение (Shift+Enter)" onClick={() => moveMatch(-1)}>↑</button>
+                <button type="button" aria-label="Следующее совпадение" title="Следующее совпадение (Enter)" onClick={() => moveMatch(1)}>↓</button>
+              </>}
+            </div>}
+          </div>
+          <div className="segmented"><button aria-pressed={!onlyProblems} onClick={() => { setOnlyProblems(false); setSelected(null); }}>Все связи</button><button aria-pressed={onlyProblems} onClick={() => { setOnlyProblems(true); setSelected(null); }}>Только проблемные</button></div>
+        </div>
         {!violations && !toast && !offline && <div className="toast ok graph-result">● Все наблюдаемые связи есть в модели</div>}
-        <div className="float legend" aria-label="Легенда графа">{Object.entries(statusLabels).map(([key, label]) => <span key={key}><i className={`legend-line ${key}`} />{label}</span>)}</div>
+        <div className="float legend" aria-label="Легенда графа">{Object.entries(statusLabels).map(([key, label]) => <span key={key}><i className={`legend-line ${key}`} />{label}</span>)}<span><i className="legend-idle" />Есть в модели, нет трафика</span></div>
       </section>{selected && <Inspector edge={edge} item={item} architecture={architecture} snapshot={snapshot} nodes={nodes} meta={meta?.get(selected)} direction={direction} setDirection={setDirection} expanded={expanded} onExpand={onExpand} onShow={show} onClose={() => setSelected(null)} />}</div>}
     {offline ? <div className="toast info global-toast" role="status">Нет связи с сервером, пробуем снова</div> : toast && fresh.length > 0 && <div className="toast bad global-toast" role="status">● {fresh.length === 1 ? `Новое нарушение: ${serviceName(fresh[0].source, nodes)} → ${serviceName(fresh[0].target, nodes)}` : `Новые нарушения: ${fresh.length}`} <span className="muted">· только что</span><button className="button ghost" onClick={showToast}>Показать</button></div>}
   </div>;
