@@ -31,6 +31,8 @@ export default function App() {
   const [issuesFilter, setIssuesFilter] = useState<EdgeStatus | "all">("all");
   const [highlighted, setHighlighted] = useState<string>();
   const [uploaded, setUploaded] = useState<{ name: string; version: number }>();
+  const projectName = typeof architecture?.model.name === "string" ? architecture.model.name.trim() : "";
+  useEffect(() => { document.title = projectName ? `${projectName} · ArchDrift` : "ArchDrift · Карта архитектуры"; }, [projectName]);
   const architectureRef = useRef(architecture), snapshotRef = useRef(snapshot);
   const previous = useRef<Set<string> | null>(null);
   const search = useRef<HTMLInputElement>(null);
@@ -147,7 +149,7 @@ export default function App() {
     setToast(null);
   };
   return <div className="app">
-    <header className="topbar"><a className="brand" href="#/graph"><span className="brand-mark">a.</span>archdrift</a><span className="brand-separator">/</span><span className="project">Astronomy Shop</span>
+    <header className="topbar"><a className="brand" href="#/graph"><span className="brand-mark">a.</span>archdrift</a>{projectName && <><span className="brand-separator">/</span><span className="project" title={projectName}>{projectName}</span></>}
       <nav role="tablist" aria-label="Разделы">{([ ["graph", "Схема"], ["issues", "Нарушения"], ["model", "Модель"] ] as const).map(([value, label]) => <button className="tab" role="tab" key={value} aria-selected={(architecture === null ? "model" : tab) === value} disabled={value !== "model" && !architecture} onClick={() => changeTab(value)}>{label}{value === "issues" && !!architecture && issues > 0 && <span className={`pill ${violations ? "bad" : ""}`}>{issues}</span>}{value === "model" && architecture && <span className="pill">v{architecture.version}</span>}</button>)}</nav>
       <div className="topbar-right"><button className="icon-button" aria-label="Переключить тему" onClick={() => setTheme(t => t === "dark" ? "light" : "dark")}>{theme === "dark" ? "☾" : "☀"}</button></div>
     </header>

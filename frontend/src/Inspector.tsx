@@ -1,40 +1,52 @@
 import { useEffect, useState } from "react";
 import { JAEGER } from "./api";
-import { calmSnippet } from "./calmSnippet";
+import { calmPatch } from "./calmSnippet";
 import { buildGraph, ownerId, serviceName, statusLabels, type DisplayEdge, type NodeMeta } from "./graph";
-import { callName, clockTime, perMinute, reason, shortRoute } from "./text";
+import { callName, clockShort, formatRate, perMinute, reason, shortRoute, trimRoute } from "./text";
 import type { Analysis, Architecture, Edge, GraphNode } from "./types";
 import type { Direction } from "./GraphCanvas";
 
 function EdgePanel({ edge, nodes, architecture, snapshot }: { edge: DisplayEdge; nodes: Map<string, GraphNode>; architecture: Architecture; snapshot: Analysis }) {
-  const member = edge.members.find(e => e.status === edge.status) ?? edge;
-  const ops = edge.status === "unexpected" ? edge.members.filter(e => e.status === "unexpected").reduce((n, e) => n + e.observedOperations, 0) : edge.observedOperations;
+  const own = edge.status === "declared" ? edge.members : edge.members.filter(e => e.status === edge.status);
+  const members = own.length ? own : [edge];
+  const member = members[0];
+  const ops = edge.status === "unexpected" ? members.reduce((n, e) => n + e.observedOperations, 0) : edge.observedOperations;
   const a = serviceName(member.source, nodes), b = serviceName(member.target, nodes);
-  const phrase = member.type === "db_query" ? `${a} обращается к базе ${b}` : member.type === "publish" ? `${a} пишет в топик ${b}` : member.type === "consume" ? `${b} читает топик ${a}` : `${a} вызывает ${b}`;
   const source = nodes.get(member.source)?.node;
-  const snippet = calmSnippet(member, nodes);
+  const calls = [...new Set(members.map(m => callName(m, nodes)))];
+  const firstSeen = members.reduce((t, m) => m.firstSeenAt < t ? m.firstSeenAt : t, member.firstSeenAt);
+  const relations = edge.matchedRelationshipIds.map(id => ({ id, text: architecture.model.relationships.find(r => r["unique-id"] === id)?.description as string | undefined ?? id }));
+  const patch = edge.status === "unexpected" ? calmPatch(member, nodes) : undefined;
   const trace = `${JAEGER}/trace/${member.exampleTraceId}`;
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const [showJson, setShowJson] = useState(false);
   useEffect(() => { if (copied) { const timer = setTimeout(() => setCopied(false), 2000); return () => clearTimeout(timer); } }, [copied]);
+  const call = (text: string) => { const [method, route] = text.includes(" /") ? [text.slice(0, text.indexOf(" ")), text.slice(text.indexOf(" ") + 1)] : ["", text]; return <span title={text}>{method && `${method} `}{trimRoute(route)}</span>; };
   return <>
-    <span className={`eyebrow ${edge.status}`}>{statusLabels[edge.status]}</span><h3>{a} <span className="arrow">→</span> {b}</h3>
-    {edge.status === "unexpected" && <p className="muted">{phrase}, но в модели v{architecture.version} такой связи нет. Либо модель устарела, либо вызов лишний.</p>}
+    <span className={`badge ${edge.status}`}>{statusLabels[edge.status]}</span><h3>{a} <span className="arrow">→</span> {b}</h3>
     {edge.status === "indeterminate" && <p className="muted">{reason(member, nodes)}</p>}
-    <dl className="facts">
-      <dt>Вызов</dt><dd className="mono">{callName(member, nodes)}</dd>
-      {edge.status === "unexpected" && source?.type === "endpoint" && <><dt>Откуда</dt><dd className="mono">{shortRoute(source.route)}</dd></>}
-      <dt>Частота</dt><dd>{perMinute(ops, snapshot)} в минуту</dd>
-      {edge.status !== "declared" && <><dt>Впервые</dt><dd>{clockTime(member.firstSeenAt)}{Date.parse(member.firstSeenAt) > Date.parse(architecture.updatedAt) ? `, после загрузки v${architecture.version}` : ""}</dd></>}
-      <dt>Пример</dt><dd className="mono"><a href={trace} target="_blank" rel="noreferrer">{member.exampleTraceId.slice(0, 12)}… ↗</a></dd>
-      {edge.status === "declared" && <><dt>Связь в модели</dt><dd className="mono">{edge.matchedRelationshipIds.map(id => <div key={id}>{id}</div>)}</dd></>}
-    </dl>
-    <a className="button primary" href={trace} target="_blank" rel="noreferrer">Открыть трейс в Jaeger ↗</a>
-    {edge.status === "unexpected" && <section className="snippet-section"><div className="snippet-heading"><strong>Если вызов нужен — добавьте в модель</strong>{typeof snippet === "string" && <button className="button ghost" onClick={async () => {
-      try { await navigator.clipboard.writeText(snippet); setCopied(true); setCopyError(false); } catch { setCopyError(true); }
-    }}>{copied ? "Скопировано" : "Копировать"}</button>}</div>
-      {typeof snippet === "string" ? <pre className="snippet">{snippet}</pre> : <p className="muted">Узла {snippet.missing} нет в модели — сначала добавьте его.</p>}
-      {copyError && <p role="alert">Не удалось скопировать. Выделите текст и скопируйте вручную.</p>}
+    <div className="flow">
+      <p><strong>{a}</strong>{source?.type === "endpoint" && <span className="mono muted" title={source.route}> {trimRoute(shortRoute(source.route))}</span>}</p>
+      <p className="flow-arrow" aria-hidden="true">↓</p>
+      <p><strong>{b}</strong></p>
+      <ul className="flow-calls mono">{calls.slice(0, 3).map(c => <li key={c}>{call(c)}</li>)}{calls.length > 3 && <li className="muted">+ ещё {calls.length - 3}</li>}</ul>
+    </div>
+    <p className="meta-line">{perMinute(ops, snapshot)} в мин · {edge.status === "declared"
+      ? <>в модели: <span title={relations.map(r => r.id).join(", ")}>«{relations[0]?.text ?? "связь"}»{relations.length > 1 ? ` и ещё ${relations.length - 1}` : ""}</span></>
+      : <>впервые в {clockShort(firstSeen)}{Date.parse(firstSeen) > Date.parse(architecture.updatedAt) ? `, после v${architecture.version}` : ""}</>}</p>
+    <a className="button primary" href={trace} target="_blank" rel="noreferrer">Открыть трейс ↗</a>
+    {patch && <section className="snippet-section">
+      <strong>Вызов нужен?</strong>
+      {patch.missing.map(m => <p key={m.label} className="muted">{m.kind} {m.label} нет в модели.</p>)}
+      <div className="snippet-actions">
+        <button className="button" onClick={async () => {
+          try { await navigator.clipboard.writeText(patch.text); setCopied(true); setCopyError(false); } catch { setCopyError(true); }
+        }}>{copied ? "Скопировано" : patch.missing.length ? "Скопировать сервис и связь" : "Скопировать связь"}</button>
+        <button className="button ghost" aria-expanded={showJson} onClick={() => setShowJson(v => !v)}>{showJson ? "Скрыть JSON" : "Показать JSON"}</button>
+      </div>
+      {showJson && <pre className="snippet">{patch.text}</pre>}
+      {copyError && <p role="alert">Не удалось скопировать. Откройте JSON и скопируйте вручную.</p>}
     </section>}
   </>;
 }
@@ -69,7 +81,7 @@ function NodePanel({ item, snapshot, nodes, meta, direction, setDirection, expan
   const hasChildren = snapshot.nodes.some(({ node }) => "parentId" in node && node.parentId === n.id);
   return <>
     <span className="eyebrow">{nodeLabels[n.type]}</span><h3>{n.type === "endpoint" ? `${n.method} ${shortRoute(n.route)}` : n.label}</h3>
-    {member ? <p className="muted">в сервисе {serviceName(n.id, nodes)}</p> : n.type === "service" && <p className="muted">{meta?.caption} · {Math.round(meta?.opsPerMinute ?? 0)} опер/мин · <span className={!item.known ? "unexpected" : ""}>{item.known ? "есть в модели" : "нет в модели"}</span></p>}
+    {member ? <p className="muted">в сервисе {serviceName(n.id, nodes)}</p> : n.type === "service" && <p className="muted">{meta?.caption} · {formatRate(meta?.opsPerMinute ?? 0)} опер/мин · <span className={!item.known ? "unexpected" : ""}>{item.known ? "есть в модели" : "нет в модели"}</span></p>}
     {!member && <div className="subtabs" role="tablist" aria-label="Направление вызовов">
       {n.type === "postgres_database" ? <button role="tab" aria-selected>Кто обращается · {count(incoming, "source")}</button> : ((n.type === "kafka_topic" ? ["in", "out"] : ["out", "in"]) as Direction[]).map(side => <button key={side} role="tab" aria-selected={direction === side} onClick={() => setDirection(side)}>{side === "in" ? (n.type === "kafka_topic" ? "Кто пишет" : "Кто вызывает") : (n.type === "kafka_topic" ? "Кто читает" : "Куда ходит")} · {side === "in" ? count(incoming, "source") : count(outgoing, "target")}</button>)}
     </div>}
