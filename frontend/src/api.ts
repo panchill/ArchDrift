@@ -46,7 +46,7 @@ export async function loadAnalysis(signal: AbortSignal): Promise<Analysis | null
     throw e;
   }
 }
-export async function uploadArchitecture(model: CalmModel, currentVersion: number): Promise<Architecture> {
+export async function uploadArchitecture(model: CalmModel, currentVersion: number, retryConflict = true): Promise<Architecture> {
   const revision = (version: number): CalmModel => ({ ...model, metadata: { ...model.metadata, archdrift: { ...model.metadata?.archdrift, version } } });
   if (MOCKS) {
     const details = mockValidation(model);
@@ -59,7 +59,7 @@ export async function uploadArchitecture(model: CalmModel, currentVersion: numbe
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(revision(version)),
   });
   try { return await put(currentVersion); } catch (e) {
-    if (!(e instanceof ApiError) || e.status !== 409) throw e;
+    if (!retryConflict || !(e instanceof ApiError) || e.status !== 409) throw e;
     const latest = await loadArchitecture(new AbortController().signal);
     return put(latest?.version ?? 0);
   }

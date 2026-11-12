@@ -7,13 +7,13 @@ describe("model file format checks", () => {
   });
   it("reports the JSON error line", async () => {
     const result = await readModelFile(file('{\n"nodes": [] trailing}'));
-    expect(result).toMatchObject({ ok: false, error: expect.stringMatching(/Это не JSON: строка 2/) });
+    expect(result).toMatchObject({ ok: false, error: expect.stringMatching(/Некорректный JSON — строка 2/) });
   });
   it("omits the line when the parser gives no position", async () => {
-    expect(await readModelFile(file("broken"))).toMatchObject({ ok: false, error: "Это не JSON. Нужен файл CALM 1.2 в формате JSON." });
+    expect(await readModelFile(file("broken"))).toMatchObject({ ok: false, error: "Некорректный JSON." });
   });
   it.each(["null", "[]", "{}", '{"nodes": []}', '{"nodes": {}, "relationships": []}'])("rejects missing arrays: %s", async source => {
-    expect(await readModelFile(file(source))).toMatchObject({ ok: false, error: expect.stringContaining("нет списков nodes и relationships") });
+    expect(await readModelFile(file(source))).toMatchObject({ ok: false, error: expect.stringContaining("Некорректный формат CALM") });
   });
   it("leaves semantic validation to the server", async () => {
     const model = { nodes: [null], relationships: [], custom: true };

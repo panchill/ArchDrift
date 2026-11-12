@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
-import { JAEGER } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { ApiError, JAEGER, uploadArchitecture } from "./api";
 import { calmPatch } from "./calmSnippet";
 import { buildGraph, ownerId, serviceName, statusLabels, type DisplayEdge, type NodeMeta } from "./graph";
 import { callName, clockShort, formatRate, perMinute, reason, shortRoute, trimRoute } from "./text";
-import type { Analysis, Architecture, Edge, GraphNode } from "./types";
+import type { Analysis, Architecture, CalmRelationship, Edge, GraphNode } from "./types";
 import type { Direction } from "./GraphCanvas";
 
-function EdgePanel({ edge, nodes, architecture, snapshot }: { edge: DisplayEdge; nodes: Map<string, GraphNode>; architecture: Architecture; snapshot: Analysis }) {
+function EdgePanel({ edge, nodes, architecture, snapshot, onModelSaved }: { edge: DisplayEdge; nodes: Map<string, GraphNode>; architecture: Architecture; snapshot: Analysis; onModelSaved: (value: Architecture) => void }) {
   const own = edge.status === "declared" ? edge.members : edge.members.filter(e => e.status === edge.status);
   const members = own.length ? own : [edge];
   const member = members[0];
@@ -16,11 +16,29 @@ function EdgePanel({ edge, nodes, architecture, snapshot }: { edge: DisplayEdge;
   const calls = [...new Set(members.map(m => callName(m, nodes)))];
   const firstSeen = members.reduce((t, m) => m.firstSeenAt < t ? m.firstSeenAt : t, member.firstSeenAt);
   const relations = edge.matchedRelationshipIds.map(id => ({ id, text: architecture.model.relationships.find(r => r["unique-id"] === id)?.description as string | undefined ?? id }));
-  const patch = edge.status === "unexpected" ? calmPatch(member, nodes) : undefined;
+  const patch = edge.status === "unexpected" ? calmPatch(member, nodes, architecture.model.relationships.map(r => r["unique-id"])) : undefined;
   const trace = `${JAEGER}/trace/${member.exampleTraceId}`;
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
   const [showJson, setShowJson] = useState(false);
+  const pending = useRef(false);
+  const [adding, setAdding] = useState(false), [addError, setAddError] = useState("");
+  const stale = architecture.version !== snapshot.architectureVersion;
+  useEffect(() => { setAddError(""); }, [member.source, member.target, member.type]);
+  async function addRelationship() {
+    if (pending.current || stale || !patch || patch.missing.length > 0) return;
+    pending.current = true; setAdding(true); setAddError("");
+    try {
+      const relationship = JSON.parse(patch.text) as CalmRelationship;
+      const model = { ...architecture.model, relationships: [...architecture.model.relationships, relationship] };
+      onModelSaved(await uploadArchitecture(model, architecture.version, false));
+    } catch (e) {
+      setAddError(e instanceof ApiError && e.status === 409
+        ? "Модель изменилась. Дождитесь обновления и повторите."
+        : e instanceof ApiError && e.status === 400 ? "Сервер отклонил связь. Проверьте модель."
+        : "Не удалось добавить связь. Попробуйте ещё раз.");
+    } finally { pending.current = false; setAdding(false); }
+  }
   useEffect(() => { if (copied) { const timer = setTimeout(() => setCopied(false), 2000); return () => clearTimeout(timer); } }, [copied]);
   const call = (text: string) => { const [method, route] = text.includes(" /") ? [text.slice(0, text.indexOf(" ")), text.slice(text.indexOf(" ") + 1)] : ["", text]; return <span title={text}>{method && `${method} `}{trimRoute(route)}</span>; };
   return <>
@@ -40,12 +58,14 @@ function EdgePanel({ edge, nodes, architecture, snapshot }: { edge: DisplayEdge;
       <strong>Вызов нужен?</strong>
       {patch.missing.map(m => <p key={m.label} className="muted">{m.kind} {m.label} нет в модели.</p>)}
       <div className="snippet-actions">
+        {!patch.missing.length && <button className="button primary" disabled={adding || stale} onClick={() => void addRelationship()}>{adding ? "Добавляем…" : stale ? "Обновляем анализ…" : "Добавить в модель"}</button>}
         <button className="button" onClick={async () => {
           try { await navigator.clipboard.writeText(patch.text); setCopied(true); setCopyError(false); } catch { setCopyError(true); }
         }}>{copied ? "Скопировано" : patch.missing.length ? "Скопировать сервис и связь" : "Скопировать связь"}</button>
         <button className="button ghost" aria-expanded={showJson} onClick={() => setShowJson(v => !v)}>{showJson ? "Скрыть JSON" : "Показать JSON"}</button>
       </div>
       {showJson && <pre className="snippet">{patch.text}</pre>}
+      {addError && <p role="alert">{addError}</p>}
       {copyError && <p role="alert">Не удалось скопировать. Откройте JSON и скопируйте вручную.</p>}
     </section>}
   </>;
@@ -94,8 +114,9 @@ export function Inspector(props: {
   edge?: DisplayEdge; item?: GraphNode; architecture: Architecture; snapshot: Analysis; nodes: Map<string, GraphNode>;
   meta?: NodeMeta; direction: Direction; setDirection: (v: Direction) => void; expanded: string | null;
   onExpand: (id: string) => void; onShow: (e: Edge) => void; onClose: () => void;
+  onModelSaved: (value: Architecture) => void;
 }) {
   return <aside className="inspector" aria-label="Детали графа"><button className="close" aria-label="Закрыть панель" onClick={props.onClose}>×</button><div className="inspector-body">
-    {props.edge ? <EdgePanel key={props.edge.id} edge={props.edge} nodes={props.nodes} architecture={props.architecture} snapshot={props.snapshot} /> : props.item ? <NodePanel {...props} item={props.item} /> : null}
+    {props.edge ? <EdgePanel key={props.edge.id} edge={props.edge} nodes={props.nodes} architecture={props.architecture} snapshot={props.snapshot} onModelSaved={props.onModelSaved} /> : props.item ? <NodePanel {...props} item={props.item} /> : null}
   </div></aside>;
 }

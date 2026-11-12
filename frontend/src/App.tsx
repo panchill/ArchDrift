@@ -3,6 +3,7 @@ import { loadAnalysis, loadArchitecture } from "./api";
 import { GraphCanvas, type Direction, type Theme } from "./GraphCanvas";
 import { buildGraph, edgeKey, findSearchMatches, nodeMeta, ownerId, serviceEdgeId, serviceName, servicesWithoutTraffic, statusLabels } from "./graph";
 import { ModelTab } from "./ModelTab";
+import { ModelEditor } from "./ModelEditor";
 import { IssuesTab } from "./IssuesTab";
 import { Inspector } from "./Inspector";
 import { useHashTab, type Tab } from "./useHashTab";
@@ -31,6 +32,7 @@ export default function App() {
   const [issuesFilter, setIssuesFilter] = useState<EdgeStatus | "all">("all");
   const [highlighted, setHighlighted] = useState<string>();
   const [uploaded, setUploaded] = useState<{ name: string; version: number }>();
+  const [editing, setEditing] = useState<Architecture | null>(null);
   const projectName = typeof architecture?.model.name === "string" ? architecture.model.name.trim() : "";
   useEffect(() => { document.title = projectName ? `${projectName} · ArchDrift` : "ArchDrift · Карта архитектуры"; }, [projectName]);
   const architectureRef = useRef(architecture), snapshotRef = useRef(snapshot);
@@ -155,7 +157,7 @@ export default function App() {
     </header>
     {error && !snapshot ? <section className="error-state" role="alert"><h2>Не удалось загрузить данные</h2><button className="button" onClick={() => { setError(false); setAttempt(a => a + 1); }}>Повторить</button></section>
       : architecture === undefined ? <div className="loading" role="status">Загрузка архитектуры…</div>
-      : tab === "model" || !architecture ? <ModelTab architecture={architecture} snapshot={snapshot} uploadedFile={uploaded?.version === architecture?.version ? uploaded?.name : undefined} onGraph={() => setTab("graph")} onUploaded={(value, name) => {
+      : tab === "model" || !architecture ? <ModelTab architecture={architecture} snapshot={snapshot} uploadedFile={uploaded?.version === architecture?.version ? uploaded?.name : undefined} onEdit={() => setEditing(architecture)} onGraph={() => setTab("graph")} onUploaded={(value, name) => {
         architectureRef.current = value; setArchitecture(value); setUploaded({ name, version: value.version }); setAttempt(a => a + 1);
       }} onReset={() => {
         architectureRef.current = null; snapshotRef.current = null; previous.current = null;
@@ -187,7 +189,12 @@ export default function App() {
         </div>
         {!violations && !toast && !offline && <div className="toast ok graph-result">● Все наблюдаемые связи есть в модели</div>}
         <div className="float legend" aria-label="Легенда графа">{Object.entries(statusLabels).map(([key, label]) => <span key={key}><i className={`legend-line ${key}`} />{label}</span>)}<span><i className="legend-idle" />Есть в модели, нет трафика</span></div>
-      </section>{selected && <Inspector edge={edge} item={item} architecture={architecture} snapshot={snapshot} nodes={nodes} meta={meta?.get(selected)} direction={direction} setDirection={setDirection} expanded={expanded} onExpand={onExpand} onShow={show} onClose={() => setSelected(null)} />}</div>}
+      </section>{selected && <Inspector edge={edge} item={item} architecture={architecture} snapshot={snapshot} nodes={nodes} meta={meta?.get(selected)} direction={direction} setDirection={setDirection} expanded={expanded} onExpand={onExpand} onShow={show} onClose={() => setSelected(null)} onModelSaved={value => {
+        architectureRef.current = value; setArchitecture(value); setUploaded(undefined); setAttempt(a => a + 1); setNotice("Связь добавлена в модель");
+      }} />}</div>}
+    {editing && <ModelEditor architecture={editing} onCancel={() => setEditing(null)} onSaved={value => {
+      architectureRef.current = value; setArchitecture(value); setUploaded(undefined); setEditing(null); setAttempt(a => a + 1);
+    }} />}
     {offline ? <div className="toast info global-toast" role="status">Нет связи с сервером, пробуем снова</div> : toast && fresh.length > 0 && <div className="toast bad global-toast" role="status">● {fresh.length === 1 ? `Новое нарушение: ${serviceName(fresh[0].source, nodes)} → ${serviceName(fresh[0].target, nodes)}` : `Новые нарушения: ${fresh.length}`} <span className="muted">· только что</span><button className="button ghost" onClick={showToast}>Показать</button></div>}
     {notice && <div className="toast ok global-toast" role="status">{notice}</div>}
   </div>;
