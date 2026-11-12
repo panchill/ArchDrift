@@ -55,5 +55,11 @@ services:
       archdrift:
         condition: service_healthy
 
+  # Исходящий спан Envoy не несёт http.method. Скрипт дописывает его из :method.
+  frontend-proxy:
+    volumes:
+      - ${ARCHDRIFT_ROOT}/deploy/frontend-proxy-entrypoint.sh:/archdrift/frontend-proxy-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/archdrift/frontend-proxy-entrypoint.sh"]
+
 volumes:
   archdrift-pg:
