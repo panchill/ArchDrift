@@ -106,8 +106,8 @@ describe("new architecture flow", () => {
     await user.click(screen.getByRole("button", { name: "Показать" }));
     const panel = within(await screen.findByLabelText("Детали графа"));
     expect(panel.getByText("Нет в модели")).toBeVisible();
-    expect(panel.getByRole("link", { name: /Открыть трейс в Jaeger/ })).toHaveAttribute("href", expect.stringContaining("/jaeger/ui/trace/"));
-    await user.click(panel.getByRole("button", { name: "Копировать" }));
+    expect(panel.getByRole("link", { name: /Открыть трейс/ })).toHaveAttribute("href", expect.stringContaining("/jaeger/ui/trace/"));
+    await user.click(panel.getByRole("button", { name: "Скопировать связь" }));
     expect(panel.getByRole("button", { name: "Скопировано" })).toBeVisible();
     expect(await navigator.clipboard.readText()).toContain('"connects"');
     await user.click(panel.getByRole("button", { name: "Закрыть панель" }));
