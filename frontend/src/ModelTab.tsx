@@ -36,9 +36,10 @@ function ResetDialog({ version, busy, error, onCancel, onConfirm, onDownload }: 
     </div>
   </div></div>;
 }
-export function ModelTab({ architecture, snapshot, uploadedFile, onUploaded, onGraph, onReset }: {
+export function ModelTab({ architecture, snapshot, uploadedFile, onUploaded, onGraph, onReset, onEdit }: {
   architecture: Architecture | null; snapshot: Analysis | null; uploadedFile?: string;
   onUploaded: (value: Architecture, name: string) => void; onGraph: () => void; onReset: () => void;
+  onEdit?: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const pending = useRef(false);
@@ -106,7 +107,7 @@ export function ModelTab({ architecture, snapshot, uploadedFile, onUploaded, onG
     <div className="page-heading">
       <div><h1>{architecture ? `Модель v${architecture.version}` : "Загрузите модель архитектуры"}</h1>
         <p className="muted">{architecture ? `Загружена ${loadedAt(architecture.updatedAt)}${uploadedFile ? ` из ${uploadedFile}` : ""}` : "ArchDrift сравнивает CALM-модель с тем, что видно в трейсах. Схема появится, как только будет модель."}</p></div>
-      {architecture && <div className="actions"><button className="button ghost" onClick={download}>Скачать JSON</button><button className="button danger" onClick={() => { setResetError(""); setConfirmReset(true); }}>Сбросить модель</button><button className="button primary" disabled={busy} onClick={() => input.current?.click()}>{busy ? "Загружаем…" : "Загрузить новую версию"}</button></div>}
+      {architecture && <div className="actions">{onEdit && <button className="button" disabled={busy} onClick={onEdit}>Редактировать JSON</button>}<button className="button ghost" onClick={download}>Скачать JSON</button><button className="button danger" onClick={() => { setResetError(""); setConfirmReset(true); }}>Сбросить модель</button><button className="button primary" disabled={busy} onClick={() => input.current?.click()}>{busy ? "Загружаем…" : "Загрузить новую версию"}</button></div>}
     </div>
     {!architecture && !failure && <button className={`dropzone ${over ? "over" : ""}`} onDragOver={e => { e.preventDefault(); if (!busy) setOver(true); }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }} onDrop={e => { e.preventDefault(); void upload(e.dataTransfer.files[0]); }} disabled={busy} onClick={() => input.current?.click()}><span className="upload-icon">↑</span><strong>{busy ? "Загружаем…" : "Перетащите architecture.json сюда"}</strong><span>или <u>выберите файл</u> · CALM 1.2, до 16 МБ</span></button>}
     {failure && <>
